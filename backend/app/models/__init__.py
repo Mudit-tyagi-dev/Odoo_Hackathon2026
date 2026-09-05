@@ -5,7 +5,7 @@ Alembic autogenerate and for `Base.metadata.create_all()` to create all tables.
 
 from app.core.db import Base
 from .users import User
-from .customer import CustomerTier, Customer
+from .customer import  Customer # CustomerTier
 from .product import Category, Product, DiscountRule
 from .warehouse import Warehouse, WarehouseStock
 from .subscription import SubscriptionPlan
@@ -20,7 +20,7 @@ from .audit import QuotationAuditLog
 __all__ = [
     "Base",
     "User",
-    "CustomerTier",
+    # "CustomerTier",
     "Customer",
     "Category",
     "Product",

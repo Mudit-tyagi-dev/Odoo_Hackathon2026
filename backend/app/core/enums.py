@@ -19,6 +19,7 @@ class BillingCycle(str, enum.Enum):
     MONTHLY = "monthly"
     QUARTERLY = "quarterly"
     YEARLY = "yearly"
+    WEEKLY = "weekly"
 
 
 class QuotationStatus(str, enum.Enum):
@@ -74,3 +75,13 @@ class ActorRole(str, enum.Enum):
     MANAGER = "manager"
     FINANCE = "finance"
     SYSTEM = "system"
+
+class SubscriptionStatus(str, enum.Enum):
+    PROCESSING = "processing"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    PAST_DUE = "past_due"
+    CANCELED = "canceled"
+    EXPIRED = "expired"
+    REFUNDED = "refunded"
+    FAILED = "failed"

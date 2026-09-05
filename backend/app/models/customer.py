@@ -14,15 +14,15 @@ if TYPE_CHECKING:
     from app.models.users import User
 
 
-class CustomerTier(Base):
-    __tablename__ = "customer_tiers"
+# class CustomerTier(Base):
+#     __tablename__ = "customer_tiers"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
-    default_discount_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0)
+#     id: Mapped[int] = mapped_column(primary_key=True)
+#     name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+#     default_discount_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0)
 
-    customers: Mapped[List["Customer"]] = relationship(back_populates="tier")
-    discount_rules: Mapped[List["DiscountRule"]] = relationship(back_populates="tier")
+#     customers: Mapped[List["Customer"]] = relationship(back_populates="tier")
+#     discount_rules: Mapped[List["DiscountRule"]] = relationship(back_populates="tier")
 
 
 class Customer(Base):
@@ -34,6 +34,6 @@ class Customer(Base):
     # nullable + unique: a customer *may* have portal login credentials, but if they do, it's 1:1
     portal_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), unique=True)
 
-    tier: Mapped["CustomerTier"] = relationship(back_populates="customers")
+    # tier: Mapped["CustomerTier"] = relationship(back_populates="customers")
     portal_user: Mapped["User | None"] = relationship(back_populates="portal_customer")
     quotations: Mapped[List["Quotation"]] = relationship(back_populates="customer")

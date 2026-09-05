@@ -17,6 +17,8 @@ class Warehouse(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
+    address: Mapped[str] = mapped_column(String(1000), nullable= False, default="Gandhinagar, Gujarat")
+    max_q: Mapped[int] = mapped_column(Integer, nullable= False, default=500)
 
     stock_entries: Mapped[List["WarehouseStock"]] = relationship(back_populates="warehouse")
     fulfillment_splits: Mapped[List["FulfillmentSplit"]] = relationship(back_populates="warehouse")
@@ -25,9 +27,14 @@ class Warehouse(Base):
 class WarehouseStock(Base):
     __tablename__ = "warehouse_stock"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    warehouse_id: Mapped[int] = mapped_column(ForeignKey("warehouses.id"), nullable=False, index=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
+    warehouse_id: Mapped[int] = mapped_column(
+        ForeignKey("warehouses.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     __table_args__ = (

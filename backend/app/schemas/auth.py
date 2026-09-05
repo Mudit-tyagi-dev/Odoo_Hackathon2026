@@ -9,7 +9,7 @@ class SignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6, description="Password must be at least 6 characters")
     name: str = Field(default=None, description="Optional user display name")
-    phone: Optional[str] = Field(..., max_length=10, description="Password must be at least 6 characters")
+    phone: Optional[str] = Field(..., max_length=15, description="Password must be at least 6 characters")
 
 
 class LoginRequest(BaseModel):

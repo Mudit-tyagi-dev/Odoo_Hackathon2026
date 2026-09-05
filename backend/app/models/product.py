@@ -10,7 +10,7 @@ from app.core.db import Base
 from app.core.enums import ProductType
 
 if TYPE_CHECKING:
-    from .customer import CustomerTier
+    # from .customer import CustomerTier
     from .fulfillment import FulfillmentSplit
     from .quotation import QuotationLine
     from .subscription import SubscriptionPlan
@@ -23,9 +23,7 @@ class Category(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
-
-    products: Mapped[List["Product"]] = relationship(back_populates="category")
-
+    products = relationship("Product", back_populates="category")
 
 class Product(Base):
     __tablename__ = "products"
@@ -33,6 +31,7 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     category_id: Mapped[int] = mapped_column(ForeignKey("category.id"), nullable=False, index=True)
+    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     base_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     cost_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     product_type: Mapped[ProductType] = mapped_column(
@@ -45,7 +44,6 @@ class Product(Base):
     )
 
     category: Mapped["Category"] = relationship(back_populates="products")
-    discount_rules: Mapped[List["DiscountRule"]] = relationship(back_populates="product")
     stock_entries: Mapped[List["WarehouseStock"]] = relationship(back_populates="product")
     subscription_plans: Mapped[List["SubscriptionPlan"]] = relationship(back_populates="product")
     quotation_lines: Mapped[List["QuotationLine"]] = relationship(back_populates="product")
@@ -64,16 +62,12 @@ class DiscountRule(Base):
     __tablename__ = "discount_rules"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
-    tier_id: Mapped[int] = mapped_column(ForeignKey("customer_tiers.id"), nullable=False, index=True)
     max_discount_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    min_discount_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     requires_manager_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     requires_finance_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
-        UniqueConstraint("product_id", "tier_id", name="uq_discount_rules_product_tier"),
         CheckConstraint("max_discount_pct >= 0 AND max_discount_pct <= 100", name="ck_discount_rules_pct_range"),
     )
-
-    product: Mapped["Product"] = relationship(back_populates="discount_rules")
-    tier: Mapped["CustomerTier"] = relationship(back_populates="discount_rules")
