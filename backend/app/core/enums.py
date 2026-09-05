@@ -6,6 +6,7 @@ class UserRole(str, enum.Enum):
     SALES_REP = "sales_rep"
     SALES_MANAGER = "sales_manager"
     FINANCE = "finance"
+    CUSTOMER = "customer"
 
 
 class ProductType(str, enum.Enum):
