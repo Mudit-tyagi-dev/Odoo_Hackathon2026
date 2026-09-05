@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { EMAIL_REGEX } from "../../utils/validation";
+import { getSavedLanguage, saveLanguage, LANGUAGE_OPTIONS, SIGNUP_TRANSLATIONS } from "../../utils/authLanguage";
 
 /* ── Password strength scorer ─────────────────────────── */
 function getPasswordStrength(pw) {
@@ -54,6 +55,8 @@ export const Signup = () => {
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [lang, setLang] = useState(getSavedLanguage());
+  const t = SIGNUP_TRANSLATIONS[lang];
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -70,37 +73,37 @@ export const Signup = () => {
     const errs = {};
     if (s === 1) {
       if (!formData.email.trim())
-        errs.email = "Work email is required.";
+        errs.email = t.emailRequired;
       else if (!EMAIL_REGEX.test(formData.email.trim()))
-        errs.email = "Enter a valid work email address.";
+        errs.email = t.emailInvalid;
     }
     if (s === 2) {
       if (!formData.name.trim())
-        errs.name = "Full name is required.";
+        errs.name = t.nameRequired;
       else if (formData.name.trim().length < 2)
-        errs.name = "Name must be at least 2 characters.";
+        errs.name = t.nameMinLength;
 
       const rawPhone = formData.phone.trim();
       if (!rawPhone) {
-        errs.phone = "Phone number is required.";
+        errs.phone = t.phoneRequired;
       } else if (!/^\d{7,12}$/.test(rawPhone.replace(/[\s-]/g, ""))) {
-        errs.phone = "Enter a valid phone number (7-12 digits).";
+        errs.phone = t.phoneInvalid;
       }
 
       if (!formData.password) {
-        errs.password = "Password is required.";
+        errs.password = t.passwordRequired;
       } else if (formData.password.length < 8) {
-        errs.password = "Password must be at least 8 characters.";
+        errs.password = t.passwordMinLength;
       } else if (!/[A-Z]/.test(formData.password)) {
-        errs.password = "Password must contain at least one uppercase letter.";
+        errs.password = t.passwordUppercase;
       } else if (!/[0-9]/.test(formData.password)) {
-        errs.password = "Password must contain at least one number.";
+        errs.password = t.passwordNumber;
       }
 
       if (!formData.confirmPassword) {
-        errs.confirmPassword = "Please confirm your password.";
+        errs.confirmPassword = t.confirmPasswordRequired;
       } else if (formData.password !== formData.confirmPassword) {
-        errs.confirmPassword = "Passwords do not match.";
+        errs.confirmPassword = t.passwordsDoNotMatch;
       }
     }
     return errs;
@@ -129,7 +132,7 @@ export const Signup = () => {
       setSuccess(true);
       setTimeout(() => navigate("/login"), 2800);
     } catch (err) {
-      setApiError(err.message || "Signup failed. Please try again.");
+      setApiError(err.message || t.signupFailed);
     } finally {
       setIsLoading(false);
     }
@@ -137,13 +140,9 @@ export const Signup = () => {
 
   /* ── Left panel content ─────────────────────────────── */
   const leftContent = {
-    title: "Stop losing deals to slow approvals.",
-    tagline: "Start negotiating. Start winning.",
-    features: [
-      "Real-time counter-offers between customer & sales",
-      "Multi-level approval engine with governance rules",
-      "Customer self-service portal with live pricing",
-    ],
+    title: t.leftTitle,
+    tagline: t.leftTagline,
+    features: t.leftFeatures,
   };
 
   return (
@@ -204,6 +203,25 @@ export const Signup = () => {
           </span>
         </div>
 
+        {/* Language selector */}
+        <div className="flex justify-end mb-4">
+          <select
+            value={lang}
+            aria-label="Language"
+            onChange={(e) => {
+              setLang(e.target.value);
+              saveLanguage(e.target.value);
+            }}
+            className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-600 outline-none focus:border-emerald-500 cursor-pointer"
+          >
+            {LANGUAGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Progress dots */}
         <div className="flex items-center gap-2 mb-8">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -215,7 +233,7 @@ export const Signup = () => {
             />
           ))}
           <span className="text-[11px] text-slate-400 ml-1 font-medium">
-            Step {step} of {TOTAL_STEPS}
+            {t.step} {step} {t.of} {TOTAL_STEPS}
           </span>
         </div>
 
@@ -227,7 +245,7 @@ export const Signup = () => {
             className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 mb-5 transition w-fit"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
+            <span>{t.back}</span>
           </button>
         )}
 
@@ -237,11 +255,11 @@ export const Signup = () => {
             <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
               <CheckCircle2 className="w-8 h-8 text-emerald-600" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Account created!</h2>
+            <h2 className="text-2xl font-bold text-slate-900">{t.accountCreated}</h2>
             <p className="text-sm text-slate-500 max-w-xs">
-              Welcome to DealFlow360,{" "}
-              <strong className="text-slate-800">{formData.name || "there"}</strong>! Redirecting
-              to sign in...
+              {t.welcome}{" "}
+              <strong className="text-slate-800">{formData.name || "there"}</strong>!{" "}
+              {t.redirecting}
             </p>
           </div>
         ) : (
@@ -250,9 +268,9 @@ export const Signup = () => {
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">Your work email</h1>
+                  <h1 className="text-2xl font-bold text-slate-900">{t.yourWorkEmail}</h1>
                   <p className="text-sm text-slate-500 mt-1">
-                    If your company already uses DealFlow360, we'll connect you automatically.
+                    {t.emailHint}
                   </p>
                 </div>
                 <div className="flex gap-3">
@@ -271,7 +289,7 @@ export const Signup = () => {
                     onClick={handleNext}
                     className="px-5 py-3 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800 transition shadow"
                   >
-                    Continue
+                    {t.continueBtn}
                   </button>
                 </div>
                 {errors.email && (
@@ -280,9 +298,9 @@ export const Signup = () => {
                   </p>
                 )}
                 <p className="text-xs text-slate-400">
-                  Already have an account?{" "}
+                  {t.alreadyHaveAccount}{" "}
                   <Link to="/login" className="text-emerald-600 font-semibold hover:underline">
-                    Sign in
+                    {t.signIn}
                   </Link>
                 </p>
               </div>
@@ -292,11 +310,11 @@ export const Signup = () => {
             {step === 2 && (
               <div className="space-y-5">
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">Create Your Account</h1>
+                  <h1 className="text-2xl font-bold text-slate-900">{t.createYourAccount}</h1>
                   <p className="text-sm text-slate-500 mt-1">
-                    Already have an account?{" "}
+                    {t.alreadyHaveAccount}{" "}
                     <Link to="/login" className="text-emerald-600 font-semibold hover:underline">
-                      Sign in
+                      {t.signIn}
                     </Link>
                   </p>
                 </div>
@@ -312,7 +330,7 @@ export const Signup = () => {
                 {/* Full name */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-700">
-                    Full Name <span className="text-red-500">*</span>
+                    {t.fullName} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -331,7 +349,7 @@ export const Signup = () => {
                 {/* Phone with country code */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-700">
-                    Phone number <span className="text-red-500">*</span>
+                    {t.phoneNumber} <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-2">
                     <select
@@ -366,13 +384,13 @@ export const Signup = () => {
                 {/* Password */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-700">
-                    Password <span className="text-red-500">*</span>
+                    {t.password} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
-                      placeholder="Min 8 chars, uppercase, number"
+                      placeholder={t.passwordPlaceholder}
                       onChange={(e) => setField("password", e.target.value)}
                       className={`w-full pl-3.5 pr-10 py-2.5 text-sm rounded-xl border bg-white text-slate-900 placeholder:text-slate-400 outline-none transition
                         ${errors.password ? "border-red-400 focus:ring-2 focus:ring-red-100" : "border-slate-200 focus:ring-2 focus:ring-emerald-50 focus:border-emerald-500"}`}
@@ -403,7 +421,7 @@ export const Signup = () => {
                         strength.score === 2 ? "text-amber-500" :
                         strength.score === 3 ? "text-emerald-500" : "text-emerald-500"
                       }`}>
-                        {strength.label}
+                        {t.strength[strength.label.toLowerCase()] || strength.label}
                       </span>
                     </div>
                   )}
@@ -417,13 +435,13 @@ export const Signup = () => {
                 {/* Confirm password */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-700">
-                    Confirm Password <span className="text-red-500">*</span>
+                    {t.confirmPassword} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <input
                       type={showConfirm ? "text" : "password"}
                       value={formData.confirmPassword}
-                      placeholder="Re-enter password"
+                      placeholder={t.confirmPlaceholder}
                       onChange={(e) => setField("confirmPassword", e.target.value)}
                       className={`w-full pl-3.5 pr-10 py-2.5 text-sm rounded-xl border bg-white text-slate-900 placeholder:text-slate-400 outline-none transition
                         ${errors.confirmPassword ? "border-red-400 focus:ring-2 focus:ring-red-100" : "border-slate-200 focus:ring-2 focus:ring-emerald-50 focus:border-emerald-500"}`}
@@ -445,14 +463,15 @@ export const Signup = () => {
 
                 {/* Legal consent */}
                 <p className="text-xs text-slate-500 text-center leading-relaxed">
-                  By signing up, I agree to the Company's{" "}
+                  {t.legalPrefix}{" "}
                   <button type="button" className="text-emerald-600 hover:underline font-medium">
-                    Privacy Statement
+                    {t.privacy}
                   </button>{" "}
-                  and{" "}
+                  {t.legalAnd}{" "}
                   <button type="button" className="text-emerald-600 hover:underline font-medium">
-                    Terms of Service
+                    {t.terms}
                   </button>
+                  {t.legalSuffix}
                 </p>
 
                 {/* Submit */}
@@ -468,10 +487,10 @@ export const Signup = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                       </svg>
-                      Creating account...
+                      {t.creatingAccount}
                     </>
                   ) : (
-                    "Create Account"
+                    t.createAccount
                   )}
                 </button>
               </div>

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth, ROLES, ROLE_REDIRECTS, ROLE_LABELS } from "../../context/AuthContext";
 import { EMAIL_REGEX } from "../../utils/validation";
+import { getSavedLanguage, saveLanguage, LANGUAGE_OPTIONS, LOGIN_TRANSLATIONS } from "../../utils/authLanguage";
 
 const ROLE_OPTIONS = [
   {
@@ -55,18 +56,20 @@ export const Login = () => {
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [lang, setLang] = useState(getSavedLanguage());
+  const t = LOGIN_TRANSLATIONS[lang];
 
   const validate = () => {
     const errs = {};
     if (!email.trim()) {
-      errs.email = "Work email is required.";
+      errs.email = t.emailRequired;
     } else if (!EMAIL_REGEX.test(email.trim())) {
-      errs.email = "Enter a valid email address.";
+      errs.email = t.emailInvalid;
     }
     if (!password) {
-      errs.password = "Password is required.";
+      errs.password = t.passwordRequired;
     } else if (password.length < 6) {
-      errs.password = "Password must be at least 6 characters.";
+      errs.password = t.passwordMinLength;
     }
     return errs;
   };
@@ -88,7 +91,7 @@ export const Login = () => {
       const user = await login({ email: email.trim(), password, selectedRole });
       navigate(ROLE_REDIRECTS[user.role] || "/portal", { replace: true });
     } catch (err) {
-      setApiError(err.message || "Sign in failed. Please try again.");
+      setApiError(err.message || t.signInFailed);
     } finally {
       setIsLoading(false);
     }
@@ -130,22 +133,17 @@ export const Login = () => {
         {/* Product pitch */}
         <div className="space-y-6 py-10">
           <div className="text-xs font-bold tracking-widest uppercase text-white/50">
-            {roleConfig?.label} Portal
+            {t.rolePortal[selectedRole] || `${roleConfig?.label} Portal`}
           </div>
           <h2 className="text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
-            Close better deals.<br />
-            <span className="text-white/70">Faster. Together.</span>
+            {t.pitchTitle}<br />
+            <span className="text-white/70">{t.pitchHighlight}</span>
           </h2>
           <p className="text-sm text-white/70 leading-relaxed max-w-xs">
-            DealFlow360 connects your sales team, customers, and finance in one
-            seamless negotiation and approval platform — purpose-built for B2B commerce.
+            {t.pitch}
           </p>
           <ul className="space-y-3 pt-2">
-            {[
-              "Real-time quotation negotiation & counter-offers",
-              "Multi-level approval workflows with audit logs",
-              "Customer self-service portal with live pricing",
-            ].map((feat) => (
+            {t.features.map((feat) => (
               <li key={feat} className="flex items-start gap-3 text-sm text-white/80">
                 <CheckCircle2 className="w-4 h-4 text-white/50 mt-0.5 shrink-0" />
                 <span>{feat}</span>
@@ -173,12 +171,31 @@ export const Login = () => {
           </span>
         </div>
 
+        {/* Language selector */}
+        <div className="flex justify-end mb-4">
+          <select
+            value={lang}
+            aria-label="Language"
+            onChange={(e) => {
+              setLang(e.target.value);
+              saveLanguage(e.target.value);
+            }}
+            className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-600 outline-none focus:border-blue-500 cursor-pointer"
+          >
+            {LANGUAGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="space-y-2 mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            Sign In
+            {t.signIn}
           </h1>
           <p className="text-sm text-slate-500">
-            Select your role and authenticate to continue.
+            {t.subtitle}
           </p>
         </div>
 
@@ -236,7 +253,7 @@ export const Login = () => {
           {/* Email */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700">
-              Work Email <span className="text-red-500">*</span>
+              {t.workEmail} <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
@@ -264,14 +281,14 @@ export const Login = () => {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-700">
-                Password <span className="text-red-500">*</span>
+                {t.password} <span className="text-red-500">*</span>
               </label>
               <button
                 type="button"
                 className="text-xs text-blue-600 hover:underline font-medium"
                 onClick={() => {/* TODO: forgot password flow */}}
               >
-                Forgot password?
+                {t.forgotPassword}
               </button>
             </div>
             <div className="relative">
@@ -317,11 +334,11 @@ export const Login = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
-                Signing in...
+                {t.signingIn}
               </>
             ) : (
               <>
-                Sign In
+                {t.signIn}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -330,9 +347,9 @@ export const Login = () => {
 
         {/* Sign up link */}
         <p className="text-center text-xs text-slate-500 mt-8">
-          Don't have an account?{" "}
+          {t.dontHaveAccount}{" "}
           <Link to="/signup" className="text-blue-600 font-semibold hover:underline">
-            Create one for free
+            {t.createOneFree}
           </Link>
         </p>
       </div>

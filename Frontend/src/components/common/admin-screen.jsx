@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { PackagePlus, Pencil, Plus, Trash2, Search, ChevronDown, Check } from 'lucide-react'
+import { PackagePlus, Pencil, Plus, Trash2, Search, ChevronDown, ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import {
@@ -17,8 +17,33 @@ import { useWorkspace } from './workspace-context'
 import { useToast } from '@/components/ui/Toast'
 import api from '../../services/api'
 import productService from '../../services/productService'
+import { getSubscriptionPlans } from '../../services/subscriptionService'
 import { parseApiError } from '../../utils/errorHandler'
 import { formatCurrency } from '../../utils/formatters'
+const PAGE_SIZE_OPTIONS = [20, 40, 60, 80, 100]
+
+const PRODUCT_TYPE_LABELS = {
+  hardware: 'Hardware',
+  service: 'Service',
+  subscription: 'Subscription',
+}
+
+function productTypeLabel(value) {
+  if (!value) return '—'
+  return PRODUCT_TYPE_LABELS[value] || value
+}
+
+const BILLING_CYCLE_LABELS = {
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  yearly: 'Yearly',
+  weekly: 'Weekly',
+}
+
+function billingCycleLabel(value) {
+  if (!value) return '—'
+  return BILLING_CYCLE_LABELS[value] || value
+}
 
 export function AdminScreen({ section, onAddProduct }) {
   const config = section === 'products' ? null : adminCollections[section]
@@ -49,6 +74,14 @@ export function AdminScreen({ section, onAddProduct }) {
   const [productsData, setProductsData] = useState([])
   const [productsLoading, setProductsLoading] = useState(false)
   const [productsError, setProductsError] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalCount, setTotalCount] = useState(null)
+  const pageRef = useRef(1)
+  const pageSizeRef = useRef(20)
+  const [subscriptionPlans, setSubscriptionPlans] = useState([])
+  const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false)
+  const [subscriptionPlansError, setSubscriptionPlansError] = useState('')
 
   const [sortBy, setSortBy] = useState('name')
   const [sortDirection, setSortDirection] = useState('asc')
@@ -125,6 +158,11 @@ export function AdminScreen({ section, onAddProduct }) {
     setSearch('')
   }
 
+  const categoryIdFilter =
+    activeFilter && activeFilter !== 'all'
+      ? categories.find((c) => c.name === activeFilter)?.id
+      : undefined
+
   const fetchCategories = useCallback(async () => {
     setCategoriesLoading(true)
     setCategoryError('')
@@ -138,25 +176,72 @@ export function AdminScreen({ section, onAddProduct }) {
     }
   }, [])
 
-  const fetchProducts = useCallback(async () => {
-    setProductsLoading(true)
-    setProductsError('')
+  const fetchProducts = useCallback(
+    async (targetPage = pageRef.current, targetSize = pageSizeRef.current) => {
+      setProductsLoading(true)
+      setProductsError('')
+      try {
+        const skip = (targetPage - 1) * targetSize
+        const data = await productService.getProducts({
+          search: search || undefined,
+          category_id: categoryIdFilter,
+          skip,
+          limit: Math.min(targetSize, 100),
+        })
+        // The current API returns a plain array. If it ever sends an envelope
+        // ({ data, total/count }), surface the real total/count from it.
+        let items = Array.isArray(data) ? data : []
+        let total = null
+        if (data && !Array.isArray(data) && Array.isArray(data.data)) {
+          items = data.data
+          total =
+            typeof data.total === 'number'
+              ? data.total
+              : typeof data.count === 'number'
+                ? data.count
+                : null
+        }
+        pageRef.current = targetPage
+        pageSizeRef.current = targetSize
+        setProductsData(items)
+        setTotalCount(total)
+        setCurrentPage(targetPage)
+        setPageSize(targetSize)
+      } catch (err) {
+        setProductsError(parseApiError(err) || 'Failed to load products.')
+      } finally {
+        setProductsLoading(false)
+      }
+    },
+    [search, categoryIdFilter]
+  )
+
+  const fetchSubscriptionPlans = useCallback(async () => {
+    setSubscriptionPlansLoading(true)
+    setSubscriptionPlansError('')
     try {
-      const data = await productService.getProducts({ skip: 0, limit: 100 })
-      setProductsData(data)
+      const data = await getSubscriptionPlans()
+      setSubscriptionPlans(data)
     } catch (err) {
-      setProductsError(parseApiError(err) || 'Failed to load products.')
+      setSubscriptionPlansError(parseApiError(err) || 'Failed to load subscription plans.')
     } finally {
-      setProductsLoading(false)
+      setSubscriptionPlansLoading(false)
     }
   }, [])
 
   useEffect(() => {
     if (section === 'products') {
       fetchCategories()
-      fetchProducts()
+      fetchProducts(1, pageSizeRef.current)
     }
   }, [section, fetchCategories, fetchProducts])
+
+  // Fetch real subscription plans when the Subscription Plans page mounts
+  useEffect(() => {
+    if (section === 'subscription-plans') {
+      fetchSubscriptionPlans()
+    }
+  }, [section, fetchSubscriptionPlans])
 
   // Process rows with real search, sorting, and category filter
   const rows =
@@ -216,12 +301,51 @@ export function AdminScreen({ section, onAddProduct }) {
               product.name,
               catName,
               formatCurrency(product.base_price),
-              'Each',
+              productTypeLabel(product.product_type),
               'Active',
-              'In stock',
             ]
           })
-      : config?.rows || []
+      : section === 'subscription-plans'
+        ? subscriptionPlans.map((plan) => [
+            plan.product?.name || '—',
+            billingCycleLabel(plan.billing_cycle),
+            productTypeLabel(plan.product?.product_type),
+            '—',
+            '—',
+          ])
+        : config?.rows || []
+
+  // ── Pagination (products) ────────────────────────────────────────
+  const hasPrevPage = currentPage > 1
+  const hasNextPage = !productsLoading && productsData.length === pageSize
+  const showingStart =
+    productsData.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const showingEnd = (currentPage - 1) * pageSize + productsData.length
+  // The API currently returns a plain array (no total/count), so we never
+  // fabricate a total. When the response DOES expose total/count we show it.
+  const rangeLabel =
+    productsData.length === 0
+      ? totalCount != null
+        ? `Showing 0 of ${totalCount}`
+        : 'Showing 0'
+      : totalCount != null
+        ? `Showing ${showingStart}–${showingEnd} of ${totalCount}`
+        : `Showing ${showingStart}–${showingEnd}`
+
+  // Page numbers: render a small window around the current page, plus the next
+  // page only once we know it exists (current page came back full).
+  const startPage = Math.max(1, currentPage - 2)
+  const endPage = hasNextPage ? currentPage + 1 : currentPage
+  const rawPages = []
+  for (let p = startPage; p <= endPage; p += 1) rawPages.push(p)
+  if (!rawPages.includes(1)) rawPages.unshift(1)
+  const pageItems = []
+  let lastPage = 0
+  for (const p of rawPages) {
+    if (lastPage > 0 && p > lastPage + 1) pageItems.push('…')
+    pageItems.push(p)
+    lastPage = p
+  }
 
   return (
     <main className="min-w-0 flex-1 overflow-y-auto bg-muted/20">
@@ -285,11 +409,29 @@ export function AdminScreen({ section, onAddProduct }) {
             </div>
           ) : (
             <DataTable
-              columns={['Product', 'Category', 'Price', 'Unit', 'Status', 'Stock']}
+              columns={['Product', 'Category', 'Price', 'Product Type', 'Status']}
               rows={rows}
               search=""
               emptyText="No products found."
               emptyDescription="No products match your current search or category filter. Click 'Clear all' to view the complete catalog."
+            />
+          )
+        ) : section === 'subscription-plans' ? (
+          subscriptionPlansLoading ? (
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground animate-pulse">
+              Loading subscription plans…
+            </div>
+          ) : subscriptionPlansError ? (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              {subscriptionPlansError}
+            </div>
+          ) : (
+            <DataTable
+              columns={config?.columns || []}
+              rows={rows}
+              search={search}
+              emptyText={`No ${title.toLowerCase()} configured.`}
+              emptyDescription="This configuration module will synchronize with the backend once the corresponding management endpoints are available."
             />
           )
         ) : (
@@ -302,10 +444,80 @@ export function AdminScreen({ section, onAddProduct }) {
           />
         )}
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Showing {rows.length} {rows.length === 1 ? 'record' : 'records'}</span>
-          <span>Page 1 of 1</span>
-        </div>
+        {section === 'products' ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-1.5">
+                <span>Rows per page</span>
+                <select
+                  value={pageSize}
+                  aria-label="Rows per page"
+                  onChange={(e) => {
+                    const nextSize = Number(e.target.value)
+                    setPageSize(nextSize)
+                    setCurrentPage(1)
+                    fetchProducts(1, nextSize)
+                  }}
+                  className="px-2 py-1.5 text-xs rounded-lg border border-input bg-background text-foreground outline-none focus:border-primary cursor-pointer"
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span>{productsLoading ? 'Loading…' : rangeLabel}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!hasPrevPage || productsLoading}
+                onClick={() => fetchProducts(currentPage - 1)}
+                className="gap-1.5"
+              >
+                <ChevronLeft className="size-3.5" />
+                Previous
+              </Button>
+              {pageItems.map((item, index) =>
+                item === '…' ? (
+                  <span key={`page-gap-${index}`} className="px-1">
+                    …
+                  </span>
+                ) : (
+                  <Button
+                    key={`page-${item}`}
+                    variant={item === currentPage ? 'primary' : 'outline'}
+                    size="sm"
+                    disabled={productsLoading}
+                    onClick={() => fetchProducts(item)}
+                    className="min-w-[30px] px-2"
+                  >
+                    {item}
+                  </Button>
+                )
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!hasNextPage || productsLoading}
+                onClick={() => fetchProducts(currentPage + 1)}
+                className="gap-1.5"
+              >
+                Next
+                <ChevronRight className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              Showing {rows.length} {rows.length === 1 ? 'record' : 'records'}
+            </span>
+            <span>Page 1 of 1</span>
+          </div>
+        )}
       </div>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
@@ -472,7 +684,7 @@ export function AdminScreen({ section, onAddProduct }) {
                     product_type: productType,
                   })
                   setCreateSuccess(true)
-                  fetchProducts()
+                  fetchProducts(1, pageSizeRef.current)
                   setTimeout(() => setFormOpen(false), 800)
                 } catch (err) {
                   setCreateError(parseApiError(err) || 'Failed to create product.')

@@ -1,6 +1,17 @@
+import { getSavedLanguage } from "./authLanguage";
+
 /**
  * Centralized Error & Alert Formatter
  */
+
+// Generic fallback message — the ONLY translated error. The language is the
+// single selection saved by Login/Signup (localStorage "language"); every
+// other message is returned verbatim from the API/error exactly as before.
+const GENERIC_ERROR_MESSAGES = {
+  en: "An unexpected error occurred. Please try again or contact support.",
+  hi: "एक अप्रत्याशित त्रुटि हुई। कृपया पुनः प्रयास करें या सहायता से संपर्क करें।",
+  gu: "અનપેક્ષિત ભૂલ આવી છે. કૃપા કરીને ફરી પ્રયાસ કરો અથવા સપોર્ટનો સંપર્ક કરો.",
+};
 
 export function parseApiError(error) {
   if (typeof error === "string") return error;
@@ -28,7 +39,7 @@ export function parseApiError(error) {
     return error.message;
   }
 
-  return "An unexpected error occurred. Please try again or contact support.";
+  return GENERIC_ERROR_MESSAGES[getSavedLanguage()] || GENERIC_ERROR_MESSAGES.en;
 }
 
 export function formatValidationErrors(errors) {
