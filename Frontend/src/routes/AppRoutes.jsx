@@ -1,24 +1,30 @@
-import { Routes, Route } from "react-router-dom";
+import React from "react";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import App from "../App";
+import Landing from "../pages/Landing";
+import Login from "../pages/auth/Login";
+import Signup from "../pages/auth/Signup";
+import { useAuth } from "../context/AuthContext";
 
-import Login from "../pages/Login";
-import Signup from "../pages/Signup";
-import Dashboard from "../pages/Dashboard";
-import NotFound from "../pages/NotFound";
+const RequireAuth = () => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+};
 
-const AppRoutes = () => (
+export const AppRoutes = () => {
+  return (
     <Routes>
-
-        {/* Public Routes */}
-        {/* <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} /> */}
-
-        {/* Protected / Main Routes */}
-        {/* <Route path="/dashboard" element={<Dashboard />} /> */}
-
-        {/* 404 */}
-        {/* <Route path="*" element={<NotFound />} /> */}
-
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route element={<RequireAuth />}>
+        <Route path="/portal" element={<App />} />
+        <Route path="/sales" element={<App />} />
+        <Route path="/admin" element={<App />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-);
+  );
+};
 
 export default AppRoutes;
