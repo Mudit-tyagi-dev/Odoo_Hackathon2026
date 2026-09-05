@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import ToastProvider from "./components/ui/Toast";
+import React, { useState, useEffect } from "react";
 import Header from "./components/layout/Header";
 import Sidebar from "./components/layout/Sidebar";
 import Dashboard from "./pages/Dashboard";
@@ -10,6 +9,7 @@ import Account from "./pages/Account";
 import QuotationDetailModal from "./components/modals/QuotationDetailModal";
 import DeleteQuotationModal from "./components/modals/DeleteQuotationModal";
 import CommandMenu from "./components/modals/CommandMenu";
+import { useAuth } from "./context/AuthContext";
 import {
   INITIAL_USER,
   INITIAL_METRICS,
@@ -19,10 +19,25 @@ import {
   INITIAL_ACTIVITIES,
 } from "./services/mockData";
 
-function PortalApp() {
+export function PortalApp() {
+  const { user: authUser, logout } = useAuth();
+
   // State management
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [user, setUser] = useState(INITIAL_USER);
+  const [user, setUser] = useState(() => {
+    if (authUser) {
+      return {
+        ...INITIAL_USER,
+        ...authUser,
+        customerOrg: {
+          ...INITIAL_USER.customerOrg,
+          name: authUser.company || INITIAL_USER.customerOrg.name,
+        },
+      };
+    }
+    return INITIAL_USER;
+  });
+
   const [quotations, setQuotations] = useState(INITIAL_QUOTATIONS);
   const [orders, setOrders] = useState(INITIAL_ORDERS);
   const [billingData, setBillingData] = useState(INITIAL_BILLING);
@@ -33,6 +48,32 @@ function PortalApp() {
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [quotationToDelete, setQuotationToDelete] = useState(null);
+
+  // Sync authUser updates
+  useEffect(() => {
+    if (authUser) {
+      setUser((prev) => ({
+        ...prev,
+        ...authUser,
+        customerOrg: {
+          ...prev.customerOrg,
+          name: authUser.company || prev.customerOrg?.name || "Acme Corporation",
+        },
+      }));
+    }
+  }, [authUser]);
+
+  // Global keyboard shortcut for Command Menu (⌘K or Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCommandMenuOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Handle successful deletion or cancellation
   const handleDeleteSuccess = (id) => {
@@ -54,12 +95,52 @@ function PortalApp() {
     ]);
   };
 
-  // Handle quotation update (e.g. counter offer or confirmation)
+  // Handle quotation update (counter offer or confirmation)
   const handleUpdateQuotation = (updated) => {
     setQuotations((prev) =>
       prev.map((q) => (q.id === updated.id ? updated : q))
     );
     setSelectedQuotation(updated);
+
+    // If quotation confirmed, auto-generate order and activity log
+    if (updated.status === "Confirmed") {
+      const existingOrder = orders.find((o) => o.quotationId === updated.id);
+      if (!existingOrder) {
+        const newOrder = {
+          id: `SO-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+          quotationId: updated.id,
+          customer: user?.customerOrg?.name || "Acme Corporation",
+          date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+          total: updated.total,
+          status: "Processing",
+          itemsCount: updated.lineItemsCount || updated.items?.length || 2,
+          fulfillmentStage: "Order Confirmed - Staging for Dispatch",
+        };
+        setOrders((prev) => [newOrder, ...prev]);
+
+        setActivities((prev) => [
+          {
+            id: "act-" + Date.now(),
+            title: "Quotation confirmed into order",
+            description: `${updated.id} confirmed by customer, created ${newOrder.id}`,
+            time: "Just now",
+            type: "confirmation",
+          },
+          ...prev,
+        ]);
+      }
+    } else if (updated.status === "Awaiting Approval") {
+      setActivities((prev) => [
+        {
+          id: "act-" + Date.now(),
+          title: "Counter-offer submitted",
+          description: `Customer submitted counter-offer on ${updated.id}`,
+          time: "Just now",
+          type: "counter_offer",
+        },
+        ...prev,
+      ]);
+    }
   };
 
   // Navigate helper
@@ -80,6 +161,7 @@ function PortalApp() {
         onTabChange={handleNavigate}
         quotationsCount={activeQuotationsCount}
         user={user}
+        logout={logout}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
@@ -89,6 +171,7 @@ function PortalApp() {
         {/* Sticky Header with Search, Notifications, Profile */}
         <Header
           user={user}
+          logout={logout}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           onOpenCommandMenu={() => setIsCommandMenuOpen(true)}
           onNavigate={handleNavigate}
@@ -165,10 +248,4 @@ function PortalApp() {
   );
 }
 
-export default function App() {
-  return (
-    <ToastProvider>
-      <PortalApp />
-    </ToastProvider>
-  );
-}
+export default PortalApp;

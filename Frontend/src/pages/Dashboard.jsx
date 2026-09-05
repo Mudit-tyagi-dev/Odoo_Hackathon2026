@@ -13,6 +13,7 @@ import {
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 
+
 export const Dashboard = ({
   user,
   metrics,
@@ -21,7 +22,20 @@ export const Dashboard = ({
   onSelectQuotation,
   onViewAllQuotations,
 }) => {
-  const latestQuotation = quotations?.[0];
+  const activeCount = quotations.filter(
+    (q) => q.status !== "Cancelled" && q.status !== "Confirmed"
+  ).length;
+  const negotiationCount = quotations.filter(
+    (q) => q.status === "Under Negotiation"
+  ).length;
+  const awaitingCount = quotations.filter(
+    (q) => q.status === "Awaiting Approval"
+  ).length;
+  const confirmedQuotationsCount = quotations.filter(
+    (q) => q.status === "Confirmed"
+  ).length;
+  const confirmedTotal = (metrics?.confirmedOrders || 3) + confirmedQuotationsCount;
+  const latestQuotation = quotations.find((q) => q.status !== "Cancelled") || null;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -43,7 +57,7 @@ export const Dashboard = ({
             variant="outline"
             size="sm"
             onClick={() => onSelectQuotation(latestQuotation)}
-            className="self-start sm:self-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 shadow-2xs"
+            className="self-start sm:self-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5 text-blue-600" />
             <span>View latest quotation</span>
@@ -65,10 +79,10 @@ export const Dashboard = ({
           </div>
           <div className="mt-2.5">
             <div className="text-2xl sm:text-3xl font-bold text-slate-900">
-              {metrics?.activeQuotations || quotations.filter((q) => q.status !== "Cancelled").length}
+              {activeCount}
             </div>
             <div className="text-xs text-slate-500 mt-1">
-              {metrics?.activeQuotationsNote || "1 needs your attention"}
+              {activeCount > 0 ? `${activeCount} active in pipeline` : "No active quotes"}
             </div>
           </div>
         </div>
@@ -85,10 +99,10 @@ export const Dashboard = ({
           </div>
           <div className="mt-2.5">
             <div className="text-2xl sm:text-3xl font-bold text-slate-900">
-              {metrics?.underNegotiation ?? quotations.filter((q) => q.status === "Under Negotiation").length}
+              {negotiationCount}
             </div>
             <div className="text-xs text-slate-500 mt-1">
-              {metrics?.underNegotiationNote || "Updated 12 min ago"}
+              {negotiationCount > 0 ? "Open for counter-offer" : "None in negotiation"}
             </div>
           </div>
         </div>
@@ -105,10 +119,10 @@ export const Dashboard = ({
           </div>
           <div className="mt-2.5">
             <div className="text-2xl sm:text-3xl font-bold text-slate-900">
-              {metrics?.awaitingApproval ?? quotations.filter((q) => q.status === "Awaiting Approval").length}
+              {awaitingCount}
             </div>
             <div className="text-xs text-slate-500 mt-1">
-              {metrics?.awaitingApprovalNote || "Sales team reviewing"}
+              {awaitingCount > 0 ? "Sales team reviewing" : "No pending approvals"}
             </div>
           </div>
         </div>
@@ -125,10 +139,10 @@ export const Dashboard = ({
           </div>
           <div className="mt-2.5">
             <div className="text-2xl sm:text-3xl font-bold text-slate-900">
-              {metrics?.confirmedOrders || 3}
+              {confirmedTotal}
             </div>
             <div className="text-xs text-slate-500 mt-1">
-              {metrics?.confirmedOrdersTotalValue || "₹24,80,000 total value"}
+              {confirmedQuotationsCount > 0 ? `${confirmedQuotationsCount} recently confirmed` : (metrics?.confirmedOrdersTotalValue || "3 total orders")}
             </div>
           </div>
         </div>

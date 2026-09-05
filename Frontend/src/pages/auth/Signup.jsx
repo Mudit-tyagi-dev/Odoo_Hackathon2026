@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Zap, ArrowLeft, ArrowRight, Check, Eye, EyeOff,
   CheckCircle2, AlertCircle, ShoppingCart, BarChart3, ShieldCheck
 } from "lucide-react";
-import { useAuth, ROLES } from "../../context/AuthContext";
+import { useAuth, ROLES, ROLE_REDIRECTS } from "../../context/AuthContext";
 import { EMAIL_REGEX, PHONE_REGEX } from "../../utils/validation";
 
 /* ── Password strength scorer ─────────────────────────── */
@@ -77,7 +77,14 @@ const TOTAL_STEPS = 4;
 
 export const Signup = () => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { signup, isAuthenticated, role } = useAuth();
+
+  // If already logged in, redirect to user's home workspace
+  useEffect(() => {
+    if (isAuthenticated && role) {
+      navigate(ROLE_REDIRECTS[role] || "/portal", { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
 
   // Steps: 1=email, 2=company, 3=role, 4=details
   const [step, setStep] = useState(1);

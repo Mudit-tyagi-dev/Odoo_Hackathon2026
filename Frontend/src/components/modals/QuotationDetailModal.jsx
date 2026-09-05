@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   ArrowLeft,
@@ -35,6 +35,19 @@ export const QuotationDetailModal = ({
   // Chat message state
   const [chatInput, setChatInput] = useState("");
   const [conversation, setConversation] = useState(quotation?.conversation || []);
+
+  // Synchronize state when quotation or modal open state changes
+  useEffect(() => {
+    if (quotation) {
+      setConversation(quotation.conversation || []);
+      setChatInput("");
+      setShowCounterForm(false);
+      setDiscountPercent("15");
+      setCounterNote("");
+      setCounterErrors({});
+      setCounterWarnings({});
+    }
+  }, [quotation?.id, isOpen]);
 
   if (!isOpen || !quotation) return null;
 
@@ -100,11 +113,14 @@ export const QuotationDetailModal = ({
 
       setConversation((prev) => [...prev, offerMsg]);
 
-      // Update parent state
+      // Update parent state with synchronized discount and recalculated total
       if (onUpdateQuotation) {
         onUpdateQuotation({
           ...quotation,
           status: "Awaiting Approval",
+          discountPercent: numDiscount,
+          discountAmount: Math.round(calculatedDiscountAmount),
+          total: Math.round(calculatedNewTotal),
           lastUpdated: "Just now",
           conversation: [...conversation, offerMsg],
         });

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Eye, EyeOff, Zap, ArrowRight, CheckCircle2,
@@ -39,7 +39,14 @@ const DEMO_CREDENTIALS = {
 
 export const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated, role } = useAuth();
+
+  // If already logged in, redirect to user's home workspace
+  useEffect(() => {
+    if (isAuthenticated && role) {
+      navigate(ROLE_REDIRECTS[role] || "/portal", { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
 
   const [selectedRole, setSelectedRole] = useState(ROLES.CUSTOMER);
   const [email, setEmail] = useState("");

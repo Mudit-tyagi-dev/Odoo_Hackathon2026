@@ -34,8 +34,15 @@ export const Orders = ({ orders, onOpenDeleteModal, onSelectQuotationById }) => 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {orders.map((order) => (
-                <tr key={order.id} className="hover:bg-slate-50/60 transition">
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400 text-xs">
+                    No confirmed orders yet. Once a quotation is accepted, its generated sales order will appear here.
+                  </td>
+                </tr>
+              ) : (
+                orders.map((order) => (
+                  <tr key={order.id} className="hover:bg-slate-50/60 transition">
                   {/* Order ID & Items */}
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-3">
@@ -100,7 +107,8 @@ export const Orders = ({ orders, onOpenDeleteModal, onSelectQuotationById }) => 
                     </Button>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>

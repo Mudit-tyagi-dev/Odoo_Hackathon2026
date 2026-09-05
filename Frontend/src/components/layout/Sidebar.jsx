@@ -11,16 +11,20 @@ import {
   ChevronRight,
   ChevronDown,
   X,
+  LogOut,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export const Sidebar = ({
   activeTab,
   onTabChange,
   quotationsCount = 2,
   user,
+  logout,
   isMobileOpen,
   onCloseMobile,
 }) => {
+  const navigate = useNavigate();
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     {
@@ -148,10 +152,21 @@ export const Sidebar = ({
             onTabChange("account");
             if (onCloseMobile) onCloseMobile();
           }}
-          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-800 rounded-lg hover:bg-white transition"
+          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-800 rounded-lg hover:bg-white transition cursor-pointer"
         >
           <Settings className="w-4 h-4 text-slate-400" />
           <span>Portal settings</span>
+        </button>
+
+        <button
+          onClick={() => {
+            if (logout) logout();
+            navigate("/login", { replace: true });
+          }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50/70 transition cursor-pointer"
+        >
+          <LogOut className="w-4 h-4 text-red-500" />
+          <span>Sign out</span>
         </button>
       </div>
     </div>
