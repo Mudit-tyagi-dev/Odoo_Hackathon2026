@@ -46,7 +46,7 @@ export function SalesWorkspace({ onNewQuote }) {
   ])
 
   return (
-    <main className="min-w-0 flex-1 overflow-y-auto bg-muted/30">
+    <main className="min-w-100 flex-1 overflow-y-auto bg-muted/30">
       <div className="border-b bg-card px-5 py-6 md:px-8">
         <SectionHeader
           title="Sales Workspace"
@@ -130,63 +130,11 @@ export function SalesWorkspace({ onNewQuote }) {
             />
           </section>
 
-          <AttentionPanel onSelectAttention={onNewQuote} />
         </div>
       </div>
     </main>
   )
 }
 
-function AttentionPanel({ onSelectAttention }) {
-  const items = [
-    {
-      label: 'Approval pending',
-      detail: 'Apex Manufacturing · QT-2048',
-      icon: FileCheck2,
-    },
-    {
-      label: 'High-risk discount',
-      detail: 'BluePeak Energy · QT-2035',
-      icon: AlertTriangle,
-    },
-    {
-      label: 'Delivery issue',
-      detail: 'Vertex Systems · QT-2039',
-      icon: Truck,
-    },
-    {
-      label: 'Billing issue',
-      detail: 'Cobalt Health · QT-2028',
-      icon: WalletCards,
-    },
-  ]
-
-  return (
-    <Card className="h-fit shadow-none">
-      <CardHeader>
-        <CardTitle className="text-base">Attention required</CardTitle>
-        <p className="text-xs text-muted-foreground">Actionable items across your book.</p>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        {items.map(({ label, detail, icon: Icon }) => (
-          <button
-            key={label}
-            onClick={onSelectAttention}
-            className="flex items-start gap-3 rounded-md p-3 text-left hover:bg-muted cursor-pointer transition"
-          >
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-              <Icon className="size-4" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium">{label}</span>
-              <span className="mt-1 block truncate text-xs text-muted-foreground">{detail}</span>
-            </span>
-            <ArrowRight className="ml-auto mt-1 size-4 text-muted-foreground" />
-          </button>
-        ))}
-      </CardContent>
-    </Card>
-  )
-}
 
 export default SalesWorkspace

@@ -183,7 +183,7 @@ export const Login = () => {
         </div>
 
         {/* Role selector tabs */}
-        <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1 mb-7">
+        {/* <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1 mb-7">
           {ROLE_OPTIONS.map((r) => {
             const Icon = r.icon;
             const isActive = selectedRole === r.id;
@@ -209,10 +209,10 @@ export const Login = () => {
               </button>
             );
           })}
-        </div>
+        </div> */}
 
         {/* Demo credentials helper */}
-        <button
+        {/* <button
           type="button"
           onClick={fillDemo}
           className="mb-5 w-full text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-xl py-2.5 px-4 font-medium hover:bg-blue-100 transition text-left flex items-center justify-between"
@@ -222,7 +222,7 @@ export const Login = () => {
             <strong>{ROLE_LABELS[selectedRole] || "Customer"}</strong>
           </span>
           <span className="text-blue-400">Auto-fill →</span>
-        </button>
+        </button> */}
 
         {/* API Error */}
         {apiError && (

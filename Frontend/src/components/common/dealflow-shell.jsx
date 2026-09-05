@@ -1,3 +1,6 @@
+// sales manager dashboard
+
+
 'use client'
 
 import { useState } from 'react'
