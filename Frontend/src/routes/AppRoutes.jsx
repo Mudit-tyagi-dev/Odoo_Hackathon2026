@@ -1,24 +1,15 @@
-import { Routes, Route } from "react-router-dom";
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import App from "../App";
 
-import Login from "../pages/Login";
-import Signup from "../pages/Signup";
-import Dashboard from "../pages/Dashboard";
-import NotFound from "../pages/NotFound";
-
-const AppRoutes = () => (
+export const AppRoutes = () => {
+  return (
     <Routes>
-
-        {/* Public Routes */}
-        {/* <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} /> */}
-
-        {/* Protected / Main Routes */}
-        {/* <Route path="/dashboard" element={<Dashboard />} /> */}
-
-        {/* 404 */}
-        {/* <Route path="*" element={<NotFound />} /> */}
-
+      <Route path="/" element={<App />} />
+      <Route path="/customer/*" element={<App />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-);
+  );
+};
 
 export default AppRoutes;
