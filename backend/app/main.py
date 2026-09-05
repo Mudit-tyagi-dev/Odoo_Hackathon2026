@@ -40,6 +40,6 @@ app.add_middleware(
 
 app.include_router(auth_router)
 
-@app.get("/")
+@app.get("/health")
 async def health():
     return {"status": "ok"}

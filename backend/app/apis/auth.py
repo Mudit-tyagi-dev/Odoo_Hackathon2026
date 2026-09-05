@@ -9,6 +9,6 @@ auth_router = APIRouter(prefix="/auth", tags=["Auth"])
 async def login():
     pass
 
-auth_router.get("/signup")
+@auth_router.get("/signup")
 async def signup():
     pass
