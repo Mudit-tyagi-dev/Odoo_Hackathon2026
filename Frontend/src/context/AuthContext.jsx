@@ -1,10 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-
-/**
- * DealFlow360 Auth Context
- * Manages authentication state for Customer, Sales Executive, and Admin roles.
- * Replace mock implementations with real API calls per docs/AUTH_SPECIFICATION.md
- */
+import api from "../services/api";
+import { parseApiError } from "../utils/errorHandler";
 
 export const ROLES = {
   CUSTOMER: "customer",
@@ -24,7 +20,7 @@ export const ROLE_LABELS = {
   [ROLES.ADMIN]: "Admin",
 };
 
-// Mock credential store — replace with real API calls
+// Mock credential store for Sales Executive and Admin roles
 const MOCK_USERS = [
   {
     id: "usr_001",
@@ -71,11 +67,40 @@ export const AuthProvider = ({ children }) => {
   const role = user?.role || null;
 
   /**
-   * Login — mock implementation.
-   * Replace with: POST /api/customer/auth/login (or /api/auth/login for multi-role)
+   * Login — routes to the real backend API for Customer role,
+   * falls back to mock auth for Sales Executive and Admin roles.
+   * Customer: POST /auth/login (body: { email, password })
+   *           Response: { access_token, user: { id, email, name, role, phone, created_at } }
    */
   const login = useCallback(async ({ email, password, selectedRole }) => {
-    // Simulate network latency
+    if (selectedRole === ROLES.CUSTOMER) {
+      try {
+        const response = await api.post("/auth/login", { email, password });
+
+        const { access_token, user: backendUser } = response.data;
+
+        localStorage.setItem("token", access_token);
+
+        const sessionUser = {
+          id: String(backendUser.id),
+          email: backendUser.email,
+          name: backendUser.name,
+          role: backendUser.role,
+          phone: backendUser.phone,
+          token: access_token,
+        };
+
+        localStorage.setItem("df360_user", JSON.stringify(sessionUser));
+        setUser(sessionUser);
+        return sessionUser;
+      } catch (err) {
+        throw new Error(
+          parseApiError(err) || "Invalid email or password. Please try again."
+        );
+      }
+    }
+
+    // Mock login for Sales Executive & Admin
     await new Promise((res) => setTimeout(res, 700));
 
     const found = MOCK_USERS.find(
@@ -108,24 +133,34 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   /**
-   * Signup — mock implementation.
-   * Replace with: POST /api/customer/auth/signup
+   * Signup — calls the real backend API.
+   * POST /auth/signup
+   * Signup is customer-only (role is always "customer").
    */
-  const signup = useCallback(async (signupData) => {
-    await new Promise((res) => setTimeout(res, 900));
+  const signup = useCallback(async ({ email, password, name, phone }) => {
+    try {
+      const response = await api.post("/auth/signup", {
+        email,
+        password,
+        name,
+        phone,
+      });
 
-    // Check for duplicate email in mock
-    const exists = MOCK_USERS.find(
-      (u) => u.email.toLowerCase() === signupData.email.toLowerCase()
-    );
-    if (exists) {
+      const backendUser = Array.isArray(response.data)
+        ? response.data[0]
+        : response.data;
+
+      return {
+        success: true,
+        email: backendUser.email,
+        name: backendUser.name,
+        role: backendUser.role || ROLES.CUSTOMER,
+      };
+    } catch (err) {
       throw new Error(
-        "An account with this email address already exists. Please sign in instead."
+        parseApiError(err) || "Signup failed. Please try again."
       );
     }
-
-    // Return success (not auto-logging in — redirect to login)
-    return { success: true, email: signupData.email };
   }, []);
 
   /**

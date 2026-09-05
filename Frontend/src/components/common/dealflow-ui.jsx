@@ -69,7 +69,10 @@ export function SectionHeader({ title, description, action, onAction }) {
   )
 }
 
-export function Toolbar({ search, setSearch, filters = [], onClear }) {
+export function Toolbar({ search, setSearch, filters = [], onClear, onRemoveFilter, sortBy, setSortBy, sortDirection, setSortDirection, sortOptions = [], activeFilter = 'all', setActiveFilter, filterOptions = [] }) {
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false)
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
       <div className="flex flex-col gap-2 lg:flex-row">
@@ -82,14 +85,71 @@ export function Toolbar({ search, setSearch, filters = [], onClear }) {
             className="pl-9"
           />
         </div>
-        <Button variant="outline">
-          <Filter data-icon="inline-start" />
-          Filters <Badge variant="secondary" className="ml-1">{filters.length || 3}</Badge>
-        </Button>
-        <Button variant="outline">
-          <SlidersHorizontal data-icon="inline-start" />
-          Sort <ChevronDown data-icon="inline-end" />
-        </Button>
+        <div className="relative">
+          <Button
+            variant="outline"
+            onClick={() => setSortDropdownOpen((o) => !o)}
+            className="gap-2"
+          >
+            <SlidersHorizontal data-icon="inline-start" />
+            Sort <ChevronDown data-icon="inline-end" />
+          </Button>
+          {sortDropdownOpen && sortOptions.length > 0 && (
+            <div className="absolute right-0 mt-1 w-44 rounded-md border bg-popover shadow-lg z-20 py-1 text-sm">
+              {sortOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    if (sortBy === option.value) {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortBy(option.value)
+                      setSortDirection('asc')
+                    }
+                    setSortDropdownOpen(false)
+                  }}
+                  className={`flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-muted ${
+                    sortBy === option.value ? 'bg-muted font-medium' : ''
+                  }`}
+                >
+                  {option.label}
+                  {sortBy === option.value && (
+                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="relative">
+          <Button
+            variant="outline"
+            onClick={() => setFilterDropdownOpen((o) => !o)}
+            className="gap-2"
+          >
+            <Filter data-icon="inline-start" />
+            Filters <Badge variant="secondary" className="ml-1">{filters.length || 3}</Badge>
+          </Button>
+          {filterDropdownOpen && filterOptions.length > 0 && (
+            <div className="absolute right-0 mt-1 w-44 rounded-md border bg-popover shadow-lg z-20 py-1 text-sm">
+              {filterOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    setActiveFilter(option.value)
+                    setFilterDropdownOpen(false)
+                  }}
+                  className={`flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-muted ${
+                    activeFilter === option.value ? 'bg-muted font-medium' : ''
+                  }`}
+                >
+                  {option.label}
+                  {activeFilter === option.value && <Check className="size-3" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <Button variant="ghost" size="icon" aria-label="Reload data" onClick={onClear}>
           <RefreshCw />
         </Button>
@@ -102,7 +162,7 @@ export function Toolbar({ search, setSearch, filters = [], onClear }) {
           {filters.map((filter) => (
             <Badge key={filter} variant="secondary" className="gap-1">
               {filter}
-              <button aria-label={`Remove ${filter}`} onClick={onClear} className="cursor-pointer">
+              <button aria-label={`Remove ${filter}`} onClick={onRemoveFilter ? () => onRemoveFilter(filter) : onClear} className="cursor-pointer">
                 <X className="size-3" />
               </button>
             </Badge>

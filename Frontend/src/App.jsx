@@ -154,7 +154,7 @@ export function PortalApp() {
   ).length;
 
   return (
-    <div className="flex min-h-screen bg-slate-50/50 font-sans antialiased text-slate-900 selection:bg-blue-100 selection:text-blue-900">
+    <div className="flex min-h-screen bg-slate-50/50 font-sans antialiased text-slate-900 selection:bg-emerald-100 selection:text-emerald-900">
       {/* Responsive Sidebar (Desktop fixed + Mobile slide-in drawer) */}
       <Sidebar
         activeTab={activeTab}
