@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { quotationRows } from './dealflow-data'
 import { ConfirmDialog, SectionHeader, StatusBadge, Toolbar } from './dealflow-ui'
+import { TableActionMenu } from './table-action-menu'
+import { formatCurrency } from '../../utils/formatters'
 import { useWorkspace } from './workspace-context'
 
 export function QuotationsScreen({ onNewQuote }) {
@@ -36,7 +38,7 @@ export function QuotationsScreen({ onNewQuote }) {
         <Toolbar
           search={search}
           setSearch={setSearch}
-          filters={['Approval pending', 'High risk', 'Gold tier']}
+          // filters={['Approval pending', 'High risk', 'Gold tier']}
           onClear={() => setSearch('')}
         />
 
@@ -116,9 +118,10 @@ export function QuotationsScreen({ onNewQuote }) {
                           >
                             <Send />
                           </Button>
-                          <Button variant="ghost" size="icon" aria-label="More actions">
-                            <MoreHorizontal />
-                          </Button>
+                          <TableActionMenu
+                            record={row}
+                            onEdit={onNewQuote}
+                          />
                         </div>
                       </td>
                     </tr>

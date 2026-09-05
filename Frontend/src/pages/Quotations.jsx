@@ -95,20 +95,20 @@ export const Quotations = ({
             variant="outline"
             size="sm"
             onClick={() => setDateRangeOpen(!dateRangeOpen)}
-            className={`gap-2 border-slate-300 text-slate-700 bg-white hover:bg-slate-50 shadow-2xs ${dateRange !== "all" ? "border-blue-500 text-blue-700 font-semibold" : ""}`}
+            className={`gap-2 border-input bg-card text-foreground hover:bg-muted shadow-2xs ${dateRange !== "all" ? "border-primary text-primary font-semibold" : ""}`}
           >
-            <Calendar className="w-3.5 h-3.5 text-slate-500" />
+            <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
             <span>{dateLabel}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
           </Button>
           {dateRangeOpen && (
-            <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 p-2 z-20 text-xs">
+            <div className="absolute right-0 mt-1 w-48 bg-popover text-popover-foreground rounded-xl shadow-lg border border-border p-2 z-20 text-xs">
               <button
                 onClick={() => {
                   setDateRange("30days");
                   setDateRangeOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 ${dateRange === "30days" ? "text-blue-600 font-semibold bg-blue-50/60" : "text-slate-700"}`}
+                className={`w-full text-left px-3 py-2 rounded-lg hover:bg-accent cursor-pointer ${dateRange === "30days" ? "text-primary font-semibold bg-accent" : "text-foreground"}`}
               >
                 Last 30 days
               </button>
@@ -117,7 +117,7 @@ export const Quotations = ({
                   setDateRange("quarter");
                   setDateRangeOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 ${dateRange === "quarter" ? "text-blue-600 font-semibold bg-blue-50/60" : "text-slate-700"}`}
+                className={`w-full text-left px-3 py-2 rounded-lg hover:bg-accent cursor-pointer ${dateRange === "quarter" ? "text-primary font-semibold bg-accent" : "text-foreground"}`}
               >
                 Current quarter (Q3 2026)
               </button>
@@ -126,7 +126,7 @@ export const Quotations = ({
                   setDateRange("all");
                   setDateRangeOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 ${dateRange === "all" ? "text-blue-600 font-semibold bg-blue-50/60" : "text-slate-700"}`}
+                className={`w-full text-left px-3 py-2 rounded-lg hover:bg-accent cursor-pointer ${dateRange === "all" ? "text-primary font-semibold bg-accent" : "text-foreground"}`}
               >
                 All time
               </button>
@@ -137,7 +137,7 @@ export const Quotations = ({
 
       {/* Filter & Search Bar */}
       <div className="space-y-2">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border shadow-2xs">
           {/* Search Input */}
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -146,7 +146,7 @@ export const Quotations = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by quotation number, sales rep, or status..."
-              className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:border-blue-500 focus:bg-white transition"
+              className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition"
             />
           </div>
 
@@ -156,7 +156,7 @@ export const Quotations = ({
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
+              className="px-3 py-2 text-xs sm:text-sm rounded-xl border border-input bg-background text-foreground outline-none focus:border-primary cursor-pointer"
             >
               <option value="all">All statuses</option>
               <option value="Under Negotiation">Under Negotiation</option>
@@ -170,7 +170,7 @@ export const Quotations = ({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
+              className="px-3 py-2 text-xs sm:text-sm rounded-xl border border-input bg-background text-foreground outline-none focus:border-primary cursor-pointer"
             >
               <option value="newest">Newest first</option>
               <option value="highest">Highest total</option>
@@ -209,10 +209,10 @@ export const Quotations = ({
       </div>
 
       {/* Quotations Table (Responsive with horizontal scrolling and sleek borders) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[720px]">
-            <thead className="bg-slate-50/70 border-b border-slate-200/80 text-slate-400 uppercase text-[11px] font-semibold">
+            <thead className="bg-muted/40 border-b border-border text-muted-foreground uppercase text-[11px] font-semibold">
               <tr>
                 <th className="py-3.5 px-6">QUOTATION</th>
                 <th className="py-3.5 px-6">SALES REPRESENTATIVE</th>

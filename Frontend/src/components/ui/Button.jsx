@@ -1,12 +1,12 @@
 import React from "react";
 
 const variantStyles = {
-  primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm focus-visible:ring-blue-500",
-  secondary: "bg-slate-100 text-slate-800 hover:bg-slate-200 focus-visible:ring-slate-400",
-  destructive: "bg-red-600 text-white hover:bg-red-700 shadow-sm focus-visible:ring-red-500",
-  outline: "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 focus-visible:ring-slate-400",
-  ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-slate-400",
-  link: "text-blue-600 underline-offset-4 hover:underline p-0 h-auto focus-visible:ring-blue-500",
+  primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs focus-visible:ring-ring",
+  secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 focus-visible:ring-ring",
+  destructive: "bg-destructive text-white hover:bg-destructive/90 shadow-xs focus-visible:ring-destructive",
+  outline: "border border-input bg-card text-foreground hover:bg-muted hover:text-foreground shadow-2xs focus-visible:ring-ring",
+  ghost: "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring",
+  link: "text-primary underline-offset-4 hover:underline p-0 h-auto focus-visible:ring-ring",
 };
 
 const sizeStyles = {

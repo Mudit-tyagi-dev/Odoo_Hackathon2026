@@ -39,24 +39,24 @@ export const Modal = ({
 
       {/* Modal Dialog */}
       <div
-        className={`relative w-full ${maxWidth} bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 my-auto animate-in fade-in zoom-in-95 duration-200`}
+        className={`relative w-full ${maxWidth} bg-card text-card-foreground rounded-2xl shadow-2xl border border-border overflow-hidden z-10 my-auto animate-in fade-in zoom-in-95 duration-200`}
         role="dialog"
         aria-modal="true"
       >
         {/* Header */}
         {(title || description) && (
-          <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+          <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-border">
             <div>
               {title && (
-                <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+                <h3 className="text-lg font-semibold text-card-foreground tracking-tight">{title}</h3>
               )}
               {description && (
-                <p className="text-sm text-slate-500 mt-1">{description}</p>
+                <p className="text-sm text-muted-foreground mt-1">{description}</p>
               )}
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+              className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
               aria-label="Close"
             >
               <X className="w-5 h-5" />

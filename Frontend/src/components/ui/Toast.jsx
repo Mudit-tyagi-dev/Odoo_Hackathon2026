@@ -43,10 +43,10 @@ export const ToastProvider = ({ children }) => {
   };
 
   const borderStyles = {
-    success: "border-emerald-200 bg-emerald-50/90 text-emerald-950",
-    error: "border-red-200 bg-red-50/95 text-red-950",
-    warning: "border-amber-200 bg-amber-50/90 text-amber-950",
-    info: "border-blue-200 bg-blue-50/90 text-blue-950",
+    success: "border-emerald-200 bg-emerald-50/95 text-emerald-950 dark:border-emerald-800/80 dark:bg-emerald-950/95 dark:text-emerald-100",
+    error: "border-red-200 bg-red-50/95 text-red-950 dark:border-red-800/80 dark:bg-red-950/95 dark:text-red-100",
+    warning: "border-amber-200 bg-amber-50/95 text-amber-950 dark:border-amber-800/80 dark:bg-amber-950/95 dark:text-amber-100",
+    info: "border-blue-200 bg-blue-50/95 text-blue-950 dark:border-blue-800/80 dark:bg-blue-950/95 dark:text-blue-100",
   };
 
   return (
@@ -69,13 +69,13 @@ export const ToastProvider = ({ children }) => {
             <div className="mt-0.5">{icons[t.type]}</div>
             <div className="flex-1 min-w-0">
               <h4 className="text-sm font-semibold tracking-tight">{t.title}</h4>
-              <p className="text-xs mt-0.5 text-slate-700 leading-relaxed break-words">
+              <p className="text-xs mt-0.5 opacity-90 leading-relaxed break-words">
                 {t.message}
               </p>
             </div>
             <button
               onClick={() => removeToast(t.id)}
-              className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition shrink-0"
+              className="opacity-70 hover:opacity-100 p-0.5 rounded transition shrink-0 cursor-pointer"
               aria-label="Dismiss toast"
             >
               <X className="w-4 h-4" />

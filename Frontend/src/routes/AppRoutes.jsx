@@ -41,6 +41,7 @@ export const AppRoutes = () => {
         {/* Admin Configuration Route - Restricted to Admin */}
         <Route element={<RequireRole allowedRoles={[ROLES.ADMIN]} />}>
           <Route path="/admin" element={<DealFlowShell initialSection="admin" />} />
+          <Route path="/admin/*" element={<DealFlowShell initialSection="admin" />} />
         </Route>
 
         {/* 404 Catch-all */}

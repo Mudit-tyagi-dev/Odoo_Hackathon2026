@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ConfirmDialog, FormField, SectionHeader, StatusBadge, SuccessNotice } from './dealflow-ui'
+import { formatCurrency } from '../../utils/formatters'
 
 const lifecycle = ['Draft', 'Pricing', 'Approval', 'Fulfillment', 'Billing', 'Completed']
 
@@ -259,8 +260,8 @@ export function QuotationBuilder({ onBack }) {
                   <span className="text-xs text-muted-foreground font-medium block mb-1">
                     Shipping & Logistics Cost
                   </span>
-                  <p className="text-xs font-semibold text-slate-900 pt-1.5">
-                    ${totalShipping} ({isSplitShipment ? `$${baseShipping} + $${splitFee} split fee` : 'Standard freight'})
+                  <p className="text-xs font-semibold text-foreground pt-1.5">
+                    {formatCurrency(totalShipping)} ({isSplitShipment ? `${formatCurrency(baseShipping)} + ${formatCurrency(splitFee)} split fee` : 'Standard freight'})
                   </p>
                 </div>
               </div>
@@ -324,10 +325,10 @@ export function QuotationBuilder({ onBack }) {
                             onChange={(event) => updateItem(item.id, 'quantity', Number(event.target.value))}
                           />
                         </td>
-                        <td className="px-4 py-3">${item.price.toLocaleString()}</td>
+                        <td className="px-4 py-3 font-medium text-foreground">{formatCurrency(item.price)}</td>
                         <td className="px-4 py-3">
                           <input
-                            className="w-16 rounded-md border bg-background px-2 py-1.5"
+                            className="w-16 rounded-md border border-input bg-background px-2 py-1.5 text-foreground"
                             type="number"
                             min="0"
                             max="100"
@@ -336,9 +337,9 @@ export function QuotationBuilder({ onBack }) {
                           />
                         </td>
                         <td className="px-4 py-3">{item.tax}%</td>
-                        <td className="px-4 py-3 font-medium text-emerald-700">{item.margin}%</td>
-                        <td className="px-4 py-3 text-right font-medium">
-                          ${(item.quantity * item.price * (1 - item.discount / 100)).toLocaleString()}
+                        <td className="px-4 py-3 font-medium text-emerald-700 dark:text-emerald-400">{item.margin}%</td>
+                        <td className="px-4 py-3 text-right font-medium text-foreground">
+                          {formatCurrency(item.quantity * item.price * (1 - item.discount / 100))}
                         </td>
                         <td className="px-4 py-3">
                           <Button
@@ -420,7 +421,7 @@ export function QuotationBuilder({ onBack }) {
         title={risky ? 'Route quotation for multi-step approval?' : 'Confirm quotation?'}
         description={
           risky
-            ? 'This quote exceeds the Gold tier discount threshold (15%) or contract value ($100k) and will be routed to Sales Manager and Finance for approval.'
+            ? 'This quote exceeds the Gold tier discount threshold (15%) or contract value (₹1,00,000) and will be routed to Sales Manager and Finance for approval.'
             : 'The quote is within governance policy and will be moved to Confirmed status.'
         }
         onConfirm={() => setSubmitted(true)}
@@ -470,7 +471,7 @@ function DiscountPanel({ discount, setDiscount, excess, risky }) {
               Discount exceeds tier limit. Multi-step approval chain automatically triggered.
             </div>
             <p className="text-xs">
-              Required Approvers: Sales Manager (&gt;10%) · Finance Director (&gt;15% or &gt;$100,000)
+              Required Approvers: Sales Manager (&gt;10%) · Finance Director (&gt;15% or &gt;₹1,00,000)
             </p>
           </div>
         )}
@@ -531,7 +532,7 @@ function ApprovalChainCard({ discount, total, excess }) {
               </Badge>
             </div>
             <p className="text-sm font-semibold">Finance Director</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Threshold: &gt; 15% or &gt; $100K</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Threshold: &gt; 15% or &gt; ₹1,00,000</p>
           </div>
         </div>
       </CardContent>
@@ -599,23 +600,23 @@ function Summary({ subtotal, discount, tax, shipping, total, margin, frequency }
       <CardContent className="flex flex-col gap-3 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Subtotal</span>
-          <span>${subtotal.toLocaleString()}</span>
+          <span className="font-medium text-foreground">{formatCurrency(subtotal)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Discount</span>
-          <span className="text-emerald-700 font-medium">−${discount.toLocaleString()}</span>
+          <span className="text-emerald-700 dark:text-emerald-400 font-medium">−{formatCurrency(discount)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Estimated Shipping</span>
-          <span>${shipping.toLocaleString()}</span>
+          <span className="font-medium text-foreground">{formatCurrency(shipping)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Tax (8%)</span>
-          <span>${Math.round(tax).toLocaleString()}</span>
+          <span className="font-medium text-foreground">{formatCurrency(Math.round(tax))}</span>
         </div>
-        <div className="flex justify-between border-t pt-3 font-semibold text-base">
-          <span>Grand total</span>
-          <span className="text-primary">${Math.round(total).toLocaleString()}</span>
+        <div className="flex justify-between border-t border-border pt-3 font-semibold text-base">
+          <span className="text-foreground">Grand total</span>
+          <span className="text-primary">{formatCurrency(Math.round(total))}</span>
         </div>
         <div className="text-[11px] text-muted-foreground">
           Billing terms: {frequency === 'annual' ? 'Annual recurring billing' : frequency === 'monthly' ? 'Monthly recurring billing' : 'One-time payment on fulfillment'}

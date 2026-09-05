@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { PackagePlus, Pencil, Plus, Trash2, Search, ChevronDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -14,8 +14,11 @@ import {
 import { adminCollections } from './dealflow-data'
 import { DataTable, FormField, SectionHeader, Toolbar } from './dealflow-ui'
 import { useWorkspace } from './workspace-context'
+import { useToast } from '@/components/ui/Toast'
 import api from '../../services/api'
+import productService from '../../services/productService'
 import { parseApiError } from '../../utils/errorHandler'
+import { formatCurrency } from '../../utils/formatters'
 
 export function AdminScreen({ section, onAddProduct }) {
   const config = section === 'products' ? null : adminCollections[section]
@@ -23,6 +26,8 @@ export function AdminScreen({ section, onAddProduct }) {
   const description =
     config?.description ?? 'Manage the product catalog used across quotations and price lists.'
   const { search, setSearch } = useWorkspace()
+  const toast = useToast()
+
   const [formOpen, setFormOpen] = useState(false)
   const [name, setName] = useState('')
   const [error, setError] = useState('')
@@ -89,7 +94,7 @@ export function AdminScreen({ section, onAddProduct }) {
   const [activeFilters, setActiveFilters] = useState([])
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false)
   const [categorySearch, setCategorySearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('Hardware')
+  const [selectedCategory, setSelectedCategory] = useState('')
   const categoryRef = useRef(null)
 
   useEffect(() => {
@@ -120,54 +125,63 @@ export function AdminScreen({ section, onAddProduct }) {
     setSearch('')
   }
 
-  useEffect(() => {
-    if (section !== 'products') return
-    const fetchCategories = async () => {
-      setCategoriesLoading(true)
-      setCategoryError('')
-      try {
-        const response = await api.get('/products/categories')
-        const backendData = response.data
-        const catList = backendData?.data || []
-        setCategories(catList)
-        if (catList.length > 0) {
-          setActiveFilters(['Active', ...catList.slice(0, 3).map((c) => c.name)])
-        }
-      } catch (err) {
-        setCategoryError(parseApiError(err) || 'Failed to load categories.')
-      } finally {
-        setCategoriesLoading(false)
-      }
+  const fetchCategories = useCallback(async () => {
+    setCategoriesLoading(true)
+    setCategoryError('')
+    try {
+      const catList = await productService.getProductCategories()
+      setCategories(catList)
+    } catch (err) {
+      setCategoryError(parseApiError(err) || 'Failed to load categories.')
+    } finally {
+      setCategoriesLoading(false)
     }
-    fetchCategories()
-  }, [section, setSearch])
+  }, [])
+
+  const fetchProducts = useCallback(async () => {
+    setProductsLoading(true)
+    setProductsError('')
+    try {
+      const data = await productService.getProducts({ skip: 0, limit: 100 })
+      setProductsData(data)
+    } catch (err) {
+      setProductsError(parseApiError(err) || 'Failed to load products.')
+    } finally {
+      setProductsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    if (section !== 'products') return
-    const fetchProducts = async () => {
-      setProductsLoading(true)
-      setProductsError('')
-      try {
-        const response = await api.get('/products?skip=0&limit=20')
-        setProductsData(Array.isArray(response.data) ? response.data : [])
-      } catch (err) {
-        setProductsError(parseApiError(err) || 'Failed to load products.')
-      } finally {
-        setProductsLoading(false)
-      }
+    if (section === 'products') {
+      fetchCategories()
+      fetchProducts()
     }
-    fetchProducts()
-  }, [section])
+  }, [section, fetchCategories, fetchProducts])
 
+  // Process rows with real search, sorting, and category filter
   const rows =
     section === 'products'
       ? productsData
-          .filter((product) =>
-            Object.values(product).join(' ').toLowerCase().includes(search.toLowerCase())
-          )
+          .filter((product) => {
+            if (!search) return true
+            const q = search.toLowerCase()
+            const nameMatch = (product.name || '').toLowerCase().includes(q)
+            const descMatch = (product.description || '').toLowerCase().includes(q)
+            const catName = (
+              product.category?.name ||
+              categories.find((c) => c.id === product.category_id)?.name ||
+              ''
+            ).toLowerCase()
+            const catMatch = catName.includes(q)
+            const idMatch = String(product.id || '').includes(q)
+            return nameMatch || descMatch || catMatch || idMatch
+          })
           .filter((product) => {
             if (activeFilter === 'all') return true
-            return product.category?.name === activeFilter
+            const catName =
+              product.category?.name ||
+              categories.find((c) => c.id === product.category_id)?.name
+            return catName === activeFilter
           })
           .sort((a, b) => {
             let aValue, bValue
@@ -175,8 +189,16 @@ export function AdminScreen({ section, onAddProduct }) {
               aValue = parseFloat(a.base_price) || 0
               bValue = parseFloat(b.base_price) || 0
             } else if (sortBy === 'category') {
-              aValue = (a.category?.name || String(a.category_id)).toLowerCase()
-              bValue = (b.category?.name || String(b.category_id)).toLowerCase()
+              aValue = (
+                a.category?.name ||
+                categories.find((c) => c.id === a.category_id)?.name ||
+                ''
+              ).toLowerCase()
+              bValue = (
+                b.category?.name ||
+                categories.find((c) => c.id === b.category_id)?.name ||
+                ''
+              ).toLowerCase()
             } else {
               aValue = (a.name || '').toLowerCase()
               bValue = (b.name || '').toLowerCase()
@@ -185,24 +207,34 @@ export function AdminScreen({ section, onAddProduct }) {
             if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
             return 0
           })
-          .map((product) => [
-            product.name,
-            product.category?.name || product.category_id,
-            `₹${product.base_price}`,
-            'Each',
-            'Active',
-            'In stock',
-          ])
+          .map((product) => {
+            const catName =
+              product.category?.name ||
+              categories.find((c) => c.id === product.category_id)?.name ||
+              'Standard'
+            return [
+              product.name,
+              catName,
+              formatCurrency(product.base_price),
+              'Each',
+              'Active',
+              'In stock',
+            ]
+          })
       : config?.rows || []
 
   return (
-    <main className="min-w-0 flex-1 overflow-y-auto bg-muted/30">
-      <div className="border-b bg-card px-5 py-6 md:px-8">
+    <main className="min-w-0 flex-1 overflow-y-auto bg-muted/20">
+      <div className="border-b border-border bg-card px-5 py-6 md:px-8">
         <SectionHeader
           title={title}
           description={description}
           action={section === 'products' ? 'Add Product' : `Add ${title.slice(0, -1)}`}
           onAction={() => {
+            if (section !== 'products') {
+              toast.info(`The ${title} configuration API will be connected when available.`, 'API Notice')
+              return
+            }
             setError('')
             setName('')
             setCategoryId(null)
@@ -229,7 +261,7 @@ export function AdminScreen({ section, onAddProduct }) {
         <Toolbar
           search={search}
           setSearch={setSearch}
-          filters={section === 'products' ? activeFilters : ['Active']}
+          filters={section === 'products' ? activeFilters : []}
           onClear={clearAllFilters}
           onRemoveFilter={removeFilter}
           sortBy={sortBy}
@@ -244,11 +276,11 @@ export function AdminScreen({ section, onAddProduct }) {
 
         {section === 'products' ? (
           productsLoading ? (
-            <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
-              Loading products…
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground animate-pulse">
+              Loading real catalog products…
             </div>
           ) : productsError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
               {productsError}
             </div>
           ) : (
@@ -256,24 +288,30 @@ export function AdminScreen({ section, onAddProduct }) {
               columns={['Product', 'Category', 'Price', 'Unit', 'Status', 'Stock']}
               rows={rows}
               search=""
+              emptyText="No products found."
+              emptyDescription="No products match your current search or category filter. Click 'Clear all' to view the complete catalog."
             />
           )
         ) : (
-          <DataTable columns={config?.columns || []} rows={rows} search={search} />
+          <DataTable
+            columns={config?.columns || []}
+            rows={rows}
+            search={search}
+            emptyText={`No ${title.toLowerCase()} configured.`}
+            emptyDescription="This configuration module will synchronize with the backend once the corresponding management endpoints are available."
+          />
         )}
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Showing {rows.length} records</span>
+          <span>Showing {rows.length} {rows.length === 1 ? 'record' : 'records'}</span>
           <span>Page 1 of 1</span>
         </div>
       </div>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {section === 'products' ? 'Add product' : `Add ${title.slice(0, -1)}`}
-            </DialogTitle>
+            <DialogTitle>Add Product</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <FormField
@@ -284,156 +322,121 @@ export function AdminScreen({ section, onAddProduct }) {
                 setError('')
               }}
               error={error}
-              placeholder={section === 'products' ? 'Product name' : 'Configuration name'}
+              placeholder="Product name (e.g. Industrial Sensor Kit)"
             />
-            {section === 'products' ? (
-              <div className="flex flex-col gap-4">
-                {/* Category dropdown (dynamic) */}
-                <div className="flex flex-col gap-1.5 text-sm">
-                  <label className="font-medium">Category</label>
-                  <div className="relative" ref={categoryRef}>
-                    <button
-                      type="button"
-                      onClick={() => setCategoryDropdownOpen((o) => !o)}
-                      disabled={categoriesLoading}
-                      className="flex w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus-within:border-primary disabled:opacity-50"
-                    >
-                      <span className={selectedCategory ? '' : 'text-muted-foreground'}>
-                        {selectedCategory || 'Select a category'}
-                      </span>
-                      <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-                    </button>
 
-                    {categoryDropdownOpen && (
-                      <div className="absolute top-full z-20 mt-1 w-full min-w-[200px] rounded-md border bg-background shadow-lg">
-                        <div className="border-b p-2">
-                          <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                            <input
-                              type="text"
-                              placeholder="Search categories..."
-                              value={categorySearch}
-                              onChange={(e) => setCategorySearch(e.target.value)}
-                              className="w-full rounded-md border px-3 py-1.5 pl-8 text-sm outline-none focus:border-primary"
-                              autoFocus
-                            />
-                          </div>
-                        </div>
-                        <div className="max-h-48 overflow-y-auto py-1">
-                          {categoriesLoading ? (
-                            <div className="px-3 py-2 text-sm text-muted-foreground">Loading…</div>
-                          ) : categoryError ? (
-                            <div className="px-3 py-2 text-sm text-destructive">{categoryError}</div>
-                          ) : filteredCategories.length === 0 ? (
-                            <div className="px-3 py-2 text-sm text-muted-foreground">No match</div>
-                          ) : (
-                            filteredCategories.map((cat) => (
-                              <button
-                                key={cat.id}
-                                type="button"
-                                onClick={() => {
-                                  setCategoryId(cat.id)
-                                  setSelectedCategory(cat.name)
-                                  setCategoryDropdownOpen(false)
-                                  setCategorySearch('')
-                                }}
-                                className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted text-left"
-                              >
-                                <span>{cat.name}</span>
-                                {selectedCategory === cat.name && (
-                                  <Check className="size-4 text-emerald-600" />
-                                )}
-                              </button>
-                            ))
-                          )}
+            <div className="flex flex-col gap-4">
+              {/* Category dropdown (dynamic) */}
+              <div className="flex flex-col gap-1.5 text-sm">
+                <label className="font-medium text-foreground">Category</label>
+                <div className="relative" ref={categoryRef}>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryDropdownOpen((o) => !o)}
+                    disabled={categoriesLoading}
+                    className="flex w-full items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition focus-within:border-primary disabled:opacity-50 cursor-pointer"
+                  >
+                    <span className={selectedCategory ? 'text-foreground' : 'text-muted-foreground'}>
+                      {selectedCategory || 'Select a category'}
+                    </span>
+                    <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                  </button>
+
+                  {categoryDropdownOpen && (
+                    <div className="absolute top-full z-20 mt-1 w-full min-w-[200px] rounded-xl border border-border bg-popover text-popover-foreground shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                      <div className="border-b border-border p-2">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                          <input
+                            type="text"
+                            placeholder="Search categories..."
+                            value={categorySearch}
+                            onChange={(e) => setCategorySearch(e.target.value)}
+                            className="w-full rounded-md border border-input bg-background px-3 py-1.5 pl-8 text-xs outline-none focus:border-primary text-foreground"
+                            autoFocus
+                          />
                         </div>
                       </div>
-                    )}
-                  </div>
+                      <div className="max-h-48 overflow-y-auto p-1">
+                        {filteredCategories.length === 0 ? (
+                          <div className="p-2 text-center text-xs text-muted-foreground">
+                            No categories found
+                          </div>
+                        ) : (
+                          filteredCategories.map((cat) => (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => {
+                                setCategoryId(cat.id)
+                                setSelectedCategory(cat.name)
+                                setCategoryDropdownOpen(false)
+                                setError('')
+                              }}
+                              className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                            >
+                              <span>{cat.name}</span>
+                              {categoryId === cat.id && (
+                                <Check className="size-3.5 text-primary" />
+                              )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                {/* Price fields */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    label="Base Price"
-                    value={basePrice}
-                    onChange={setBasePrice}
-                    placeholder="0.00"
-                    type="number"
-                  />
-                  <FormField
-                    label="Cost Price"
-                    value={costPrice}
-                    onChange={setCostPrice}
-                    placeholder="0.00"
-                    type="number"
-                  />
-                </div>
-
-                {/* Product type */}
-                <div className="flex flex-col gap-1.5 text-sm">
-                  <label className="font-medium">Product Type</label>
-                  <select
-                    value={productType}
-                    onChange={(e) => setProductType(e.target.value)}
-                    className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                  >
-                    <option value="hardware">Hardware</option>
-                    <option value="service">Service</option>
-                    <option value="subscription">Subscription</option>
-                  </select>
-                </div>
-
-                {/* Extra frontend-only fields */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    label="Tax (%)"
-                    value={tax}
-                    onChange={setTax}
-                    placeholder="0"
-                    type="number"
-                  />
-                  <FormField
-                    label="Unit"
-                    value={unit}
-                    onChange={setUnit}
-                    placeholder="Each, Month, Project..."
-                  />
-                  <FormField
-                    label="Quantity in hand"
-                    value={quantityInHand}
-                    onChange={setQuantityInHand}
-                    placeholder="0"
-                    type="number"
-                  />
-                  <div className="flex items-end">
-                    <label className="flex items-center gap-2 cursor-pointer text-sm">
-                      <input
-                        type="checkbox"
-                        checked={isSubscription}
-                        onChange={(e) => setIsSubscription(e.target.checked)}
-                        className="rounded border-primary text-primary focus:ring-primary"
-                      />
-                      <span>Is subscription item</span>
-                    </label>
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-2 gap-3">
                 <FormField
-                  label="Description"
-                  value={productDescription}
-                  onChange={setProductDescription}
-                  placeholder="Optional product description..."
+                  label="Base price (₹)"
+                  value={basePrice}
+                  onChange={setBasePrice}
+                  placeholder="0.00"
+                  type="number"
+                />
+                <FormField
+                  label="Cost price (₹)"
+                  value={costPrice}
+                  onChange={setCostPrice}
+                  placeholder="0.00"
+                  type="number"
                 />
               </div>
-            ) : null}
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  label="Tax (%)"
+                  value={tax}
+                  onChange={setTax}
+                  placeholder="18"
+                  type="number"
+                />
+                <FormField
+                  label="Quantity in hand"
+                  value={quantityInHand}
+                  onChange={setQuantityInHand}
+                  placeholder="0"
+                  type="number"
+                />
+              </div>
+
+              <FormField
+                label="Description"
+                value={productDescription}
+                onChange={setProductDescription}
+                placeholder="Optional product description..."
+              />
+            </div>
+
             {createError && (
-              <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                 {createError}
               </div>
             )}
             {createSuccess && (
-              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-950/40 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-300">
                 Product created successfully!
               </div>
             )}
@@ -469,6 +472,7 @@ export function AdminScreen({ section, onAddProduct }) {
                     product_type: productType,
                   })
                   setCreateSuccess(true)
+                  fetchProducts()
                   setTimeout(() => setFormOpen(false), 800)
                 } catch (err) {
                   setCreateError(parseApiError(err) || 'Failed to create product.')
