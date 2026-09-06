@@ -3,53 +3,33 @@ import api from "../services/api";
 import { parseApiError } from "../utils/errorHandler";
 
 export const ROLES = {
-  CUSTOMER: "customer",
-  SALES_EXECUTIVE: "sales_executive",
   ADMIN: "admin",
+  SALES_MANAGER: "sales_manager",
+  SALES_REP: "sales_rep",
+  FINANCE: "finance",
+  CUSTOMER: "customer",
+  SALES_EXECUTIVE: "sales_rep",
 };
 
 export const ROLE_REDIRECTS = {
-  [ROLES.CUSTOMER]: "/portal",
-  [ROLES.SALES_EXECUTIVE]: "/sales",
-  [ROLES.ADMIN]: "/admin",
+  admin: "/admin",
+  sales_manager: "/sales",
+  sales_rep: "/sales",
+  sales_executive: "/sales",
+  finance: "/sales",
+  financial_officer: "/sales",
+  customer: "/portal",
 };
 
 export const ROLE_LABELS = {
-  [ROLES.CUSTOMER]: "Customer",
-  [ROLES.SALES_EXECUTIVE]: "Sales Executive",
-  [ROLES.ADMIN]: "Admin",
+  admin: "Admin",
+  sales_manager: "Sales Manager",
+  sales_rep: "Sales Representative",
+  sales_executive: "Sales Representative",
+  finance: "Financial Officer",
+  financial_officer: "Financial Officer",
+  customer: "Customer",
 };
-
-// Mock credential store for Sales Executive and Admin roles
-// const MOCK_USERS = [
-//   {
-//     id: "usr_001",
-//     email: "rohan@acme-corp.com",
-//     password: "Customer@123",
-//     role: ROLES.CUSTOMER,
-//     name: "Rohan Kapoor",
-//     company: "Acme Corporation",
-//     initials: "RK",
-//   },
-//   {
-//     id: "usr_002",
-//     email: "aarav@dealflow360.com",
-//     password: "Sales@123",
-//     role: ROLES.SALES_EXECUTIVE,
-//     name: "Aarav Mehta",
-//     company: "DealFlow360",
-//     initials: "AM",
-//   },
-//   {
-//     id: "usr_003",
-//     email: "admin@dealflow360.com",
-//     password: "Admin@123",
-//     role: ROLES.ADMIN,
-//     name: "Priya Sharma",
-//     company: "DealFlow360",
-//     initials: "PS",
-//   },
-// ];
 
 const AuthContext = createContext(null);
 
@@ -66,65 +46,30 @@ export const AuthProvider = ({ children }) => {
   const isAuthenticated = !!user;
   const role = user?.role || null;
 
+  const login = useCallback(async ({ email, password }) => {
+    try {
+      const response = await api.post("/auth/login", { email, password });
+      const { access_token, user: backendUser } = response.data;
 
-  const login = useCallback(async ({ email, password, selectedRole }) => {
-    if (selectedRole === ROLES.CUSTOMER) {
-      try {
-        const response = await api.post("/auth/login", { email, password });
+      localStorage.setItem("token", access_token);
 
-        const { access_token, user: backendUser } = response.data;
+      const sessionUser = {
+        id: String(backendUser.id),
+        email: backendUser.email,
+        name: backendUser.name || email.split("@")[0],
+        role: (backendUser.role || "customer").toLowerCase(),
+        phone: backendUser.phone,
+        token: access_token,
+      };
 
-        localStorage.setItem("token", access_token);
-
-        const sessionUser = {
-          id: String(backendUser.id),
-          email: backendUser.email,
-          name: backendUser.name,
-          role: backendUser.role,
-          phone: backendUser.phone,
-          token: access_token,
-        };
-
-        localStorage.setItem("df360_user", JSON.stringify(sessionUser));
-        setUser(sessionUser);
-        return sessionUser;
-      } catch (err) {
-        throw new Error(
-          parseApiError(err) || "Invalid email or password. Please try again."
-        );
-      }
-    }
-
-    // Mock login for Sales Executive & Admin
-    await new Promise((res) => setTimeout(res, 700));
-
-    const found = MOCK_USERS.find(
-      (u) =>
-        u.email.toLowerCase() === email.toLowerCase() &&
-        u.password === password &&
-        u.role === selectedRole
-    );
-
-    if (!found) {
+      localStorage.setItem("df360_user", JSON.stringify(sessionUser));
+      setUser(sessionUser);
+      return sessionUser;
+    } catch (err) {
       throw new Error(
-        "Invalid credentials or incorrect role selected. Please check your email, password, and role."
+        parseApiError(err) || "Invalid email or password. Please try again."
       );
     }
-
-    const sessionUser = {
-      id: found.id,
-      email: found.email,
-      name: found.name,
-      company: found.company,
-      initials: found.initials,
-      role: found.role,
-      token: `mock_jwt_${found.id}_${Date.now()}`,
-    };
-
-    localStorage.setItem("df360_user", JSON.stringify(sessionUser));
-    localStorage.setItem("token", sessionUser.token);
-    setUser(sessionUser);
-    return sessionUser;
   }, []);
   const signup = useCallback(async ({ email, password, name, phone }) => {
     try {

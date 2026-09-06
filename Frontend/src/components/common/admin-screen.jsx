@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { PackagePlus, Pencil, Plus, Trash2, Search, ChevronDown, ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { PackagePlus, Pencil, Plus, Trash2, Search, ChevronDown, ChevronLeft, ChevronRight, Check, Eye, Loader2  } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Card, CardContent } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { Card, CardContent, } from '@/components/ui/Card'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { adminCollections } from './dealflow-data'
-import { DataTable, FormField, SectionHeader, Toolbar } from './dealflow-ui'
+import { ConfirmDialog, DataTable, FormField, SectionHeader, Toolbar } from './dealflow-ui'
 import { useWorkspace } from './workspace-context'
 import { useToast } from '@/components/ui/Toast'
 import api from '../../services/api'
@@ -84,6 +85,62 @@ export function AdminScreen({ section, onAddProduct }) {
   const [subscriptionPlans, setSubscriptionPlans] = useState([])
   const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false)
   const [subscriptionPlansError, setSubscriptionPlansError] = useState('')
+
+  // View Product Modal state
+  const [viewProductModalOpen, setViewProductModalOpen] = useState(false)
+  const [viewingProduct, setViewingProduct] = useState(null)
+
+  // Edit Product Modal state
+  const [editProductModalOpen, setEditProductModalOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState(null)
+  const [editName, setEditName] = useState('')
+  const [editCategoryId, setEditCategoryId] = useState(null)
+  const [editSelectedCategory, setEditSelectedCategory] = useState('')
+  const [editProductType, setEditProductType] = useState('hardware')
+  const [editBasePrice, setEditBasePrice] = useState('')
+  const [editCostPrice, setEditCostPrice] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editError, setEditError] = useState('')
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [editCategoryDropdownOpen, setEditCategoryDropdownOpen] = useState(false)
+  const [editCategorySearch, setEditCategorySearch] = useState('')
+  const editCategoryRef = useRef(null)
+
+  // Delete Product Modal state
+  const [deleteProductConfirmOpen, setDeleteProductConfirmOpen] = useState(false)
+  const [deletingProduct, setDeletingProduct] = useState(null)
+  const [deleteError, setDeleteError] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleViewProduct = (product) => {
+    setViewingProduct(product)
+    setViewProductModalOpen(true)
+  }
+
+  const handleEditProduct = (product) => {
+    setEditingProduct(product)
+    setEditName(product.name || '')
+    setEditCategoryId(product.category_id || null)
+    setEditSelectedCategory(
+      product.category?.name ||
+      categories.find((c) => c.id === product.category_id)?.name ||
+      ''
+    )
+    setEditProductType(product.product_type || 'hardware')
+    setEditBasePrice(product.base_price != null ? String(product.base_price) : '')
+    setEditCostPrice(product.cost_price != null ? String(product.cost_price) : '')
+    setEditDescription(product.description || '')
+    setEditError('')
+    setEditCategoryDropdownOpen(false)
+    setEditCategorySearch('')
+    setEditProductModalOpen(true)
+  }
+
+  const handleDeleteProduct = (product) => {
+    setDeletingProduct(product)
+    setDeleteError('')
+    setDeleteProductConfirmOpen(true)
+  }
 
   // Discount Rules state — populated from GET /discount-rules/
   const [discountRulesData, setDiscountRulesData] = useState([])
@@ -285,68 +342,72 @@ export function AdminScreen({ section, onAddProduct }) {
     }
   }, [section, fetchDiscountRules])
 
-  // Process rows with real search, sorting, and category filter
+  // Process filtered and sorted product records
+  const filteredSortedProducts = useMemo(() => {
+    if (section !== 'products') return []
+    return productsData
+      .filter((product) => {
+        if (!search) return true
+        const q = search.toLowerCase()
+        const nameMatch = (product.name || '').toLowerCase().includes(q)
+        const descMatch = (product.description || '').toLowerCase().includes(q)
+        const catName = (
+          product.category?.name ||
+          categories.find((c) => c.id === product.category_id)?.name ||
+          ''
+        ).toLowerCase()
+        const catMatch = catName.includes(q)
+        const idMatch = String(product.id || '').includes(q)
+        return nameMatch || descMatch || catMatch || idMatch
+      })
+      .filter((product) => {
+        if (activeFilter === 'all') return true
+        const catName =
+          product.category?.name ||
+          categories.find((c) => c.id === product.category_id)?.name
+        return catName === activeFilter
+      })
+      .sort((a, b) => {
+        let aValue, bValue
+        if (sortBy === 'price') {
+          aValue = parseFloat(a.base_price) || 0
+          bValue = parseFloat(b.base_price) || 0
+        } else if (sortBy === 'category') {
+          aValue = (
+            a.category?.name ||
+            categories.find((c) => c.id === a.category_id)?.name ||
+            ''
+          ).toLowerCase()
+          bValue = (
+            b.category?.name ||
+            categories.find((c) => c.id === b.category_id)?.name ||
+            ''
+          ).toLowerCase()
+        } else {
+          aValue = (a.name || '').toLowerCase()
+          bValue = (b.name || '').toLowerCase()
+        }
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+        return 0
+      })
+  }, [section, productsData, search, categories, activeFilter, sortBy, sortDirection])
+
   const rows =
     section === 'products'
-      ? productsData
-          .filter((product) => {
-            if (!search) return true
-            const q = search.toLowerCase()
-            const nameMatch = (product.name || '').toLowerCase().includes(q)
-            const descMatch = (product.description || '').toLowerCase().includes(q)
-            const catName = (
-              product.category?.name ||
-              categories.find((c) => c.id === product.category_id)?.name ||
-              ''
-            ).toLowerCase()
-            const catMatch = catName.includes(q)
-            const idMatch = String(product.id || '').includes(q)
-            return nameMatch || descMatch || catMatch || idMatch
-          })
-          .filter((product) => {
-            if (activeFilter === 'all') return true
-            const catName =
-              product.category?.name ||
-              categories.find((c) => c.id === product.category_id)?.name
-            return catName === activeFilter
-          })
-          .sort((a, b) => {
-            let aValue, bValue
-            if (sortBy === 'price') {
-              aValue = parseFloat(a.base_price) || 0
-              bValue = parseFloat(b.base_price) || 0
-            } else if (sortBy === 'category') {
-              aValue = (
-                a.category?.name ||
-                categories.find((c) => c.id === a.category_id)?.name ||
-                ''
-              ).toLowerCase()
-              bValue = (
-                b.category?.name ||
-                categories.find((c) => c.id === b.category_id)?.name ||
-                ''
-              ).toLowerCase()
-            } else {
-              aValue = (a.name || '').toLowerCase()
-              bValue = (b.name || '').toLowerCase()
-            }
-            if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-            if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
-            return 0
-          })
-          .map((product) => {
-            const catName =
-              product.category?.name ||
-              categories.find((c) => c.id === product.category_id)?.name ||
-              'Standard'
-            return [
-              product.name,
-              catName,
-              formatCurrency(product.base_price),
-              productTypeLabel(product.product_type),
-              'Active',
-            ]
-          })
+      ? filteredSortedProducts.map((product) => {
+          const catName =
+            product.category?.name ||
+            categories.find((c) => c.id === product.category_id)?.name ||
+            'Standard'
+          return [
+            product.name,
+            catName,
+            formatCurrency(product.base_price),
+            productTypeLabel(product.product_type),
+            'Active',
+          ]
+        })
         : section === 'subscription-plans'
         ? subscriptionPlans.map((plan) => [
             plan.product?.name || '—',
@@ -455,9 +516,13 @@ export function AdminScreen({ section, onAddProduct }) {
             <DataTable
               columns={['Product', 'Category', 'Price', 'Product Type', 'Status']}
               rows={rows}
+              rawItems={filteredSortedProducts}
               search=""
               emptyText="No products found."
               emptyDescription="No products match your current search or category filter. Click 'Clear all' to view the complete catalog."
+              onViewRow={(prod) => handleViewProduct(prod)}
+              onEditRow={(prod) => handleEditProduct(prod)}
+              onDeleteRow={(prod) => handleDeleteProduct(prod)}
             />
           )
         ) : section === 'subscription-plans' ? (
@@ -826,6 +891,272 @@ export function AdminScreen({ section, onAddProduct }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Product Detail / View Modal */}
+      <Dialog open={viewProductModalOpen} onOpenChange={setViewProductModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Product Details</span>
+              {viewingProduct?.id && (
+                <Badge variant="outline" className="font-mono text-xs">
+                  ID: #{viewingProduct.id}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {viewingProduct && (
+            <div className="flex flex-col gap-4 text-sm">
+              <div className="rounded-xl border border-border bg-muted/20 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product Name</p>
+                <p className="mt-1 text-base font-bold text-foreground">{viewingProduct.name}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Category:{' '}
+                  <span className="font-medium text-foreground">
+                    {viewingProduct.category?.name ||
+                      categories.find((c) => c.id === viewingProduct.category_id)?.name ||
+                      'Standard'}
+                  </span>
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border p-3">
+                  <span className="text-xs text-muted-foreground">Base Price (₹)</span>
+                  <p className="mt-1 text-base font-bold text-foreground">
+                    {formatCurrency(viewingProduct.base_price)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <span className="text-xs text-muted-foreground">Cost Price (₹)</span>
+                  <p className="mt-1 text-base font-bold text-foreground">
+                    {formatCurrency(viewingProduct.cost_price)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border p-3">
+                  <span className="text-xs text-muted-foreground">Margin</span>
+                  <p className="mt-1 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(
+                      (parseFloat(viewingProduct.base_price) || 0) -
+                        (parseFloat(viewingProduct.cost_price) || 0)
+                    )}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <span className="text-xs text-muted-foreground">Product Type</span>
+                  <p className="mt-1 text-sm font-semibold capitalize text-foreground">
+                    {productTypeLabel(viewingProduct.product_type)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-3">
+                <span className="text-xs text-muted-foreground">Description</span>
+                <p className="mt-1 text-xs text-foreground leading-relaxed">
+                  {viewingProduct.description || 'No description provided for this product.'}
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setViewProductModalOpen(false)
+                if (viewingProduct) handleEditProduct(viewingProduct)
+              }}
+            >
+              <Pencil className="size-3.5 mr-1" />
+              Edit Product
+            </Button>
+            <Button size="sm" onClick={() => setViewProductModalOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={editProductModalOpen} onOpenChange={setEditProductModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Product #{editingProduct?.id}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <FormField
+              label="Name"
+              value={editName}
+              onChange={(val) => {
+                setEditName(val)
+                setEditError('')
+              }}
+              placeholder="Product name"
+            />
+
+            <div className="flex flex-col gap-1.5 text-sm">
+              <label className="font-medium text-foreground">Category</label>
+              <div className="relative" ref={editCategoryRef}>
+                <button
+                  type="button"
+                  onClick={() => setEditCategoryDropdownOpen((o) => !o)}
+                  className="flex w-full items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition focus-within:border-primary cursor-pointer"
+                >
+                  <span className={editSelectedCategory ? 'text-foreground' : 'text-muted-foreground'}>
+                    {editSelectedCategory || 'Select category'}
+                  </span>
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                </button>
+
+                {editCategoryDropdownOpen && (
+                  <div className="absolute top-full z-20 mt-1 w-full min-w-[200px] rounded-xl border border-border bg-popover text-popover-foreground shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                    <div className="border-b border-border p-2">
+                      <input
+                        type="text"
+                        placeholder="Search categories..."
+                        value={editCategorySearch}
+                        onChange={(e) => setEditCategorySearch(e.target.value)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:border-primary text-foreground"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto p-1">
+                      {categories
+                        .filter((c) => c.name.toLowerCase().includes(editCategorySearch.toLowerCase()))
+                        .map((cat) => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setEditCategoryId(cat.id)
+                              setEditSelectedCategory(cat.name)
+                              setEditCategoryDropdownOpen(false)
+                              setEditError('')
+                            }}
+                            className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                          >
+                            <span>{cat.name}</span>
+                            {editCategoryId === cat.id && <Check className="size-3.5 text-primary" />}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                label="Base Price (₹)"
+                value={editBasePrice}
+                onChange={setEditBasePrice}
+                type="number"
+                placeholder="0.00"
+              />
+              <FormField
+                label="Cost Price (₹)"
+                value={editCostPrice}
+                onChange={setEditCostPrice}
+                type="number"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 text-sm">
+              <label className="font-medium text-foreground">Product Type</label>
+              <select
+                value={editProductType}
+                onChange={(e) => setEditProductType(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary cursor-pointer"
+              >
+                <option value="hardware">Hardware</option>
+                <option value="service">Service</option>
+                <option value="subscription">Subscription</option>
+              </select>
+            </div>
+
+            <FormField
+              label="Description"
+              value={editDescription}
+              onChange={setEditDescription}
+              placeholder="Product description..."
+            />
+
+            {editError && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                {editError}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditProductModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={isUpdating}
+              onClick={async () => {
+                if (!editName.trim()) {
+                  setEditError('Name is required.')
+                  return
+                }
+                if (!editCategoryId) {
+                  setEditError('Please select a category.')
+                  return
+                }
+                if (!editBasePrice || !editCostPrice) {
+                  setEditError('Base price and cost price are required.')
+                  return
+                }
+                setEditError('')
+                setIsUpdating(true)
+                try {
+                  await productService.updateProduct(editingProduct.id, {
+                    name: editName.trim(),
+                    category_id: editCategoryId,
+                    base_price: parseFloat(editBasePrice),
+                    cost_price: parseFloat(editCostPrice),
+                    product_type: editProductType,
+                    description: editDescription.trim() || undefined,
+                  })
+                  toast.success(`Product "${editName}" updated successfully.`, 'Product Updated')
+                  setEditProductModalOpen(false)
+                  fetchProducts(currentPage, pageSizeRef.current)
+                } catch (err) {
+                  setEditError(parseApiError(err) || 'Failed to update product.')
+                } finally {
+                  setIsUpdating(false)
+                }
+              }}
+            >
+              {isUpdating ? 'Updating…' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Product Confirm Dialog */}
+      <ConfirmDialog
+        open={deleteProductConfirmOpen}
+        onOpenChange={setDeleteProductConfirmOpen}
+        title={`Delete "${deletingProduct?.name}"?`}
+        description="Are you sure you want to delete this product? This will permanently remove it from the catalog."
+        onConfirm={async () => {
+          if (!deletingProduct?.id) return
+          setIsDeleting(true)
+          try {
+            await productService.deleteProduct(deletingProduct.id)
+            toast.success(`Product "${deletingProduct.name}" deleted.`, 'Product Deleted')
+            fetchProducts(currentPage, pageSizeRef.current)
+          } catch (err) {
+            toast.error(parseApiError(err) || 'Failed to delete product.', 'Delete Error')
+          } finally {
+            setIsDeleting(false)
+            setDeleteProductConfirmOpen(false)
+          }
+        }}
+      />
     </main>
   )
 }

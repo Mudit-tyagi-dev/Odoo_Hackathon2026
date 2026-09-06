@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Eye, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,8 +17,10 @@ import { useToast } from '@/components/ui/Toast'
  *
  * @param {Object} props
  * @param {any} props.record - The data row/item associated with this action menu.
+ * @param {Function} [props.onView] - Optional view handler.
  * @param {Function} [props.onEdit] - Optional edit handler. If omitted, shows clean API readiness notice.
  * @param {Function} [props.onDelete] - Optional delete handler. If omitted, shows clean API readiness notice.
+ * @param {string} [props.viewLabel="View"]
  * @param {string} [props.editLabel="Edit"]
  * @param {string} [props.deleteLabel="Delete"]
  * @param {string} [props.align="end"]
@@ -26,8 +28,10 @@ import { useToast } from '@/components/ui/Toast'
  */
 export function TableActionMenu({
   record,
+  onView,
   onEdit,
   onDelete,
+  viewLabel = 'View details',
   editLabel = 'Edit',
   deleteLabel = 'Delete',
   align = 'end',
@@ -47,6 +51,13 @@ export function TableActionMenu({
       toast.info(message, 'API Notice')
     } else {
       console.info(`[DealFlow360 Action Menu] ${message}`)
+    }
+  }
+
+  const handleView = (e) => {
+    e?.stopPropagation?.()
+    if (typeof onView === 'function') {
+      onView(record)
     }
   }
 
@@ -85,6 +96,19 @@ export function TableActionMenu({
         align={align}
         className="w-36 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in-0 zoom-in-95 duration-100"
       >
+        {typeof onView === 'function' && (
+          <>
+            <DropdownMenuItem
+              onClick={handleView}
+              className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground outline-none transition-colors"
+            >
+              <Eye className="size-3.5 text-muted-foreground" />
+              <span>{viewLabel}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="-mx-1 my-1 h-px bg-border" />
+          </>
+        )}
+
         <DropdownMenuItem
           onClick={handleEdit}
           className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground outline-none transition-colors"

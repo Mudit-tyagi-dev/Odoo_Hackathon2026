@@ -561,11 +561,33 @@ function RoutedContent() {
     return <QuotationsScreenWithModal navigate={navigate} />
   }
   if (cleanPath === '/') {
-    return <SalesWorkspace onNewQuote={() => navigate('/quotation-builder')} />
+    return <SalesWorkspaceWithModal navigate={navigate} />
   }
 
   // ── Admin / config routes ─────────────────────────────────
   return <AdminScreen section={cleanPath.slice(1)} onAddProduct={() => {}} />
+}
+
+/**
+ * Wraps SalesWorkspace with local state for viewing quotation details.
+ */
+function SalesWorkspaceWithModal({ navigate }) {
+  const [selectedQuotation, setSelectedQuotation] = useState(null)
+
+  return (
+    <>
+      <SalesWorkspace
+        onNewQuote={() => navigate('/quotation-builder')}
+        onViewQuotation={(q) => setSelectedQuotation(q)}
+      />
+      <QuotationDetailModal
+        isOpen={!!selectedQuotation}
+        onClose={() => setSelectedQuotation(null)}
+        quotation={selectedQuotation}
+        onUpdateQuotation={(updated) => setSelectedQuotation(updated)}
+      />
+    </>
+  )
 }
 
 /**

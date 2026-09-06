@@ -267,13 +267,15 @@ export function ConfirmDialog({ open, onOpenChange, title, description, onConfir
 export function DataTable({
   columns,
   rows,
+  rawItems = [],
   search,
   emptyText = 'No records found.',
   emptyDescription = 'This configuration will sync with backend when available.',
+  onViewRow,
   onEditRow,
   onDeleteRow,
 }) {
-  const visible = rows.filter((row) =>
+  const visible = rows.map((row, idx) => ({ row, rawItem: rawItems[idx] })).filter(({ row }) =>
     row.join(' ').toLowerCase().includes((search || '').toLowerCase())
   )
 
@@ -293,42 +295,46 @@ export function DataTable({
               </tr>
             </thead>
             <tbody>
-              {visible.map((row, index) => (
-                <tr
-                  key={`${row[0]}-${index}`}
-                  className="border-b border-border/60 last:border-0 hover:bg-muted/30 transition-colors"
-                >
-                  {row.map((cell, cellIndex) => (
-                    <td key={`${cell}-${cellIndex}`} className="whitespace-nowrap px-4 py-3 text-foreground">
-                      {cellIndex === row.length - 1 ||
-                      [
-                        'Active',
-                        'Draft',
-                        'Low',
-                        'Medium',
-                        'High',
-                        'Healthy',
-                        'Watch',
-                        'Approval',
-                        'Negotiation',
-                        'Fulfillment',
-                        'Completed',
-                      ].includes(cell) ? (
-                        <StatusBadge value={cell} />
-                      ) : (
-                        cell
-                      )}
+              {visible.map(({ row, rawItem }, index) => {
+                const targetRecord = rawItem || row
+                return (
+                  <tr
+                    key={`${row[0]}-${index}`}
+                    className="border-b border-border/60 last:border-0 hover:bg-muted/30 transition-colors"
+                  >
+                    {row.map((cell, cellIndex) => (
+                      <td key={`${cell}-${cellIndex}`} className="whitespace-nowrap px-4 py-3 text-foreground">
+                        {cellIndex === row.length - 1 ||
+                        [
+                          'Active',
+                          'Draft',
+                          'Low',
+                          'Medium',
+                          'High',
+                          'Healthy',
+                          'Watch',
+                          'Approval',
+                          'Negotiation',
+                          'Fulfillment',
+                          'Completed',
+                        ].includes(cell) ? (
+                          <StatusBadge value={cell} />
+                        ) : (
+                          cell
+                        )}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 text-right">
+                      <TableActionMenu
+                        record={targetRecord}
+                        onView={onViewRow ? () => onViewRow(targetRecord) : undefined}
+                        onEdit={onEditRow ? () => onEditRow(targetRecord) : undefined}
+                        onDelete={onDeleteRow ? () => onDeleteRow(targetRecord) : undefined}
+                      />
                     </td>
-                  ))}
-                  <td className="px-4 py-3 text-right">
-                    <TableActionMenu
-                      record={row}
-                      onEdit={onEditRow ? () => onEditRow(row) : undefined}
-                      onDelete={onDeleteRow ? () => onDeleteRow(row) : undefined}
-                    />
-                  </td>
-                </tr>
-              ))}
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
 

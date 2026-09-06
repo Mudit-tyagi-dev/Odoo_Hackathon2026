@@ -25,6 +25,7 @@ import { formatCurrency } from '../../utils/formatters'
 import productService from '../../services/productService'
 import subscriptionService from '../../services/subscriptionService'
 import quotationService, { LINE_TYPES } from '../../services/quotationService'
+import discountRuleService from '../../services/discountRuleService'
 import taxService from '../../services/taxService'
 import { parseApiError } from '../../utils/errorHandler'
 import { useToast } from '@/components/ui/Toast'
@@ -39,6 +40,7 @@ export function QuotationBuilder({ onBack, onQuotationCreated }) {
   const [productsLoading, setProductsLoading] = useState(false)
   const [subscriptionPlans, setSubscriptionPlans] = useState([])
   const [plansLoading, setPlansLoading] = useState(false)
+  const [maxDiscountLimit, setMaxDiscountLimit] = useState(15)
 
   // Form States
   const [customer, setCustomer] = useState('Apex Manufacturing (ID: 1)')
@@ -57,19 +59,27 @@ export function QuotationBuilder({ onBack, onQuotationCreated }) {
   const [submitError, setSubmitError] = useState('')
   const [formErrors, setFormErrors] = useState({})
 
-  // Fetch real Products and Subscription Plans on mount
+  // Fetch real Products, Subscription Plans, and Discount Rules on mount
   useEffect(() => {
     async function loadCatalog() {
       setProductsLoading(true)
       setPlansLoading(true)
       try {
-        const [productList, planList] = await Promise.all([
+        const [productList, planList, ruleList] = await Promise.all([
           productService.getProducts({ limit: 100 }),
           subscriptionService.getSubscriptionPlans(),
+          discountRuleService.getDiscountRules().catch(() => []),
         ])
         
         setProducts(productList)
         setSubscriptionPlans(planList)
+
+        if (Array.isArray(ruleList) && ruleList.length > 0) {
+          const maxRulePct = Math.max(
+            ...ruleList.map((r) => (Number(r.max_discount_pct) || 0) * 100)
+          )
+          if (maxRulePct > 0) setMaxDiscountLimit(maxRulePct)
+        }
 
         // Initialize default line items from real product catalog
         if (productList.length > 0) {
@@ -231,8 +241,8 @@ export function QuotationBuilder({ onBack, onQuotationCreated }) {
       if (item.unit_price === '' || Number(item.unit_price) < 0) {
         errors[`item_${idx}_price`] = `Line ${idx + 1}: Unit price must be non-negative.`
       }
-      if (item.discount_pct < 0 || item.discount_pct > 100) {
-        errors[`item_${idx}_discount`] = `Line ${idx + 1}: Discount must be between 0% and 100%.`
+      if (item.discount_pct < 0 || item.discount_pct > maxDiscountLimit) {
+        errors[`item_${idx}_discount`] = `Line ${idx + 1}: Discount cannot exceed applicable configured maximum (${maxDiscountLimit}%).`
       }
       if (item.line_type === LINE_TYPES.SUBSCRIPTION && !item.subscription_plan_id) {
         errors[`item_${idx}_plan`] = `Line ${idx + 1}: Subscription plan selection is required for subscription lines.`
