@@ -6,7 +6,7 @@ from app.core.db import get_db
 from app.core.enums import UserRole
 from app.core.security import create_access_token, get_current_user, hash_password, verify_password
 from app.models.users import User
-from app.schemas.auth import LoginRequest, SignupRequest, SignupResponse, UserResponse, LoginResponse
+from app.schemas.auth import LoginRequest, SignupRequest, UserResponse, LoginResponse
 
 auth_router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -46,14 +46,6 @@ async def signup(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
-
-    # Issue JWT token
-    token_payload = {
-        "sub": str(new_user.id),
-        "email": new_user.email,
-        "role": new_user.role.value,
-    }
-    access_token = create_access_token(token_payload)
 
     return UserResponse.model_validate(new_user),
 

@@ -487,10 +487,17 @@ function RoutedContent() {
   const location = useLocation()
   const routerNavigate = useNavigate()
 
+  // Determine if this shell is mounted at /admin or /sales
+  const isAdminRoute = location.pathname.startsWith('/admin')
+
   const navigate = (target) => {
-    const clean = target.replace(/^\/admin/, '') || '/products'
-    const full = target.startsWith('/admin') ? target : (clean === '/' ? '/' : `/admin${clean}`)
-    routerNavigate(full)
+    const clean = target.replace(/^\/admin/, '') || '/'
+    if (isAdminRoute) {
+      // Admin shell: push a real router URL so breadcrumbs and URL stay correct
+      const full = clean === '/' ? '/admin' : `/admin${clean}`
+      routerNavigate(full)
+    }
+    // For /sales (and any other) route: only update internal shellPath, keep router URL stable
     setShellPath(clean)
   }
 
@@ -555,17 +562,47 @@ function RoutedContent() {
 
   // ── Sales routes ──────────────────────────────────────────
   if (cleanPath === '/quotation-builder') {
-    return <QuotationBuilder onBack={() => navigate('/')} />
+    return (
+      <QuotationBuilder
+        onBack={() => navigate('/')}
+        onQuotationCreated={() => {
+          // After successful POST /quotations, go to quotations list
+          navigate('/quotations')
+        }}
+      />
+    )
   }
   if (cleanPath === '/quotations') {
     return <QuotationsScreenWithModal navigate={navigate} />
   }
   if (cleanPath === '/') {
-    return <SalesWorkspace onNewQuote={() => navigate('/quotation-builder')} />
+    return <SalesWorkspaceWithModal navigate={navigate} />
   }
 
   // ── Admin / config routes ─────────────────────────────────
   return <AdminScreen section={cleanPath.slice(1)} onAddProduct={() => {}} />
+}
+
+/**
+ * Wraps SalesWorkspace with local state for viewing quotation details.
+ */
+function SalesWorkspaceWithModal({ navigate }) {
+  const [selectedQuotation, setSelectedQuotation] = useState(null)
+
+  return (
+    <>
+      <SalesWorkspace
+        onNewQuote={() => navigate('/quotation-builder')}
+        onViewQuotation={(q) => setSelectedQuotation(q)}
+      />
+      <QuotationDetailModal
+        isOpen={!!selectedQuotation}
+        onClose={() => setSelectedQuotation(null)}
+        quotation={selectedQuotation}
+        onUpdateQuotation={(updated) => setSelectedQuotation(updated)}
+      />
+    </>
+  )
 }
 
 /**

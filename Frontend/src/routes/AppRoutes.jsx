@@ -12,9 +12,20 @@ import ToastProvider from "../components/ui/Toast";
 const RequireRole = ({ allowedRoles }) => {
   const { user, isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    // Redirect to the user's authorized role home
-    const target = ROLE_REDIRECTS[user?.role] || "/portal";
+
+  const userRole = (user?.role || "").toLowerCase();
+
+  const isAllowed = (allowedRoles || []).some((role) => {
+    const targetRole = role.toLowerCase();
+    if (targetRole === userRole) return true;
+    if (targetRole === "sales_rep" && (userRole === "sales_rep" || userRole === "sales_executive")) return true;
+    if (targetRole === "sales_executive" && (userRole === "sales_rep" || userRole === "sales_executive")) return true;
+    if (targetRole === "finance" && (userRole === "finance" || userRole === "financial_officer")) return true;
+    return false;
+  });
+
+  if (!isAllowed) {
+    const target = ROLE_REDIRECTS[userRole] || (userRole === "customer" ? "/portal" : "/sales");
     return <Navigate to={target} replace />;
   }
   return <Outlet />;
@@ -28,17 +39,29 @@ export const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* Customer Portal Route - Restricted to Customer (and Admin) */}
+        {/* Customer Portal Route - Customer & Admin */}
         <Route element={<RequireRole allowedRoles={[ROLES.CUSTOMER, ROLES.ADMIN]} />}>
           <Route path="/portal" element={<PortalApp />} />
         </Route>
 
-        {/* Sales Workspace Route - Restricted to Sales Executive and Admin */}
-        <Route element={<RequireRole allowedRoles={[ROLES.SALES_EXECUTIVE, ROLES.ADMIN]} />}>
+        {/* Sales Workspace Route - Sales Rep, Sales Manager, Finance, Admin */}
+        <Route
+          element={
+            <RequireRole
+              allowedRoles={[
+                ROLES.SALES_REP,
+                ROLES.SALES_MANAGER,
+                ROLES.FINANCE,
+                ROLES.ADMIN,
+                ROLES.SALES_EXECUTIVE,
+              ]}
+            />
+          }
+        >
           <Route path="/sales" element={<DealFlowShell initialSection="sales" />} />
         </Route>
 
-        {/* Admin Configuration Route - Restricted to Admin */}
+        {/* Admin Configuration Route - Restricted strictly to Admin */}
         <Route element={<RequireRole allowedRoles={[ROLES.ADMIN]} />}>
           <Route path="/admin" element={<DealFlowShell initialSection="admin" />} />
           <Route path="/admin/*" element={<DealFlowShell initialSection="admin" />} />

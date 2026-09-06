@@ -13,7 +13,6 @@ from app.core.security import get_current_user, authorize_customer, authorize_fo
 from app.schemas.product import (
     CategoryCreate,
     CategoryResponse,
-    CategoryUpdate,
     ProductCreate,
     ProductResponse,
     ProductUpdate,

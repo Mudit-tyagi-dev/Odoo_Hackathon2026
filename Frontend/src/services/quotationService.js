@@ -160,14 +160,14 @@ export function normalizeQuotation(q, productsMap = {}, plansMap = {}) {
   let totalDiscount = 0;
 
   const items = lines.map((l, idx) => {
-    const qty = Number(l.quantity) || 1;
-    const price = parseFloat(l.unit_price) || 0;
-    // API stores discount_pct as 0-1 fraction → convert to 0-100 for display
-    const discFraction = parseFloat(l.discount_pct) || 0;
-    const discPercent = discFraction * 100; // 0-100 for display
+    const qty = Math.max(0, Number(l.quantity) || 1);
+    const price = Math.max(0, parseFloat(l.unit_price) || 0);
+    // Clamp discount_pct to 0-1 range regardless of backend noise
+    const discFraction = Math.min(1, Math.max(0, parseFloat(l.discount_pct) || 0));
+    const discPercent = discFraction * 100;
     const lineGross = qty * price;
     const lineDiscount = lineGross * discFraction;
-    const lineNet = lineGross - lineDiscount;
+    const lineNet = Math.max(0, lineGross - lineDiscount);
     subtotal += lineGross;
     totalDiscount += lineDiscount;
 
@@ -182,10 +182,8 @@ export function normalizeQuotation(q, productsMap = {}, plansMap = {}) {
       quantity: qty,
       unitPrice: price,
       price: price,
-      // Display as 0-100 percent
       discountPercent: parseFloat(discPercent.toFixed(2)),
       discount: parseFloat(discPercent.toFixed(2)),
-      // Store raw 0-1 fraction for backend operations
       discount_pct_fraction: discFraction,
       line_type: l.line_type || LINE_TYPES.ONE_TIME,
       subscription_plan_id: l.subscription_plan_id,
@@ -201,7 +199,7 @@ export function normalizeQuotation(q, productsMap = {}, plansMap = {}) {
     };
   });
 
-  const netSubtotal = subtotal - totalDiscount;
+  const netSubtotal = Math.max(0, subtotal - totalDiscount);
   const taxRate = 0.18;
   const taxAmount = netSubtotal * taxRate;
   const grandTotal = netSubtotal + taxAmount;
@@ -222,38 +220,31 @@ export function normalizeQuotation(q, productsMap = {}, plansMap = {}) {
       })
     : createdDate;
 
+  const avgDiscount = lines.length > 0
+      ? (lines.reduce((acc, l) => acc + Math.min(1, Math.max(0, parseFloat(l.discount_pct) || 0)), 0) / lines.length) * 100
+      : 0;
+
   return {
     id: `QT-2026-${String(q.id).padStart(4, '0')}`,
     rawId: q.id,
     quote: `QT-2026-${String(q.id).padStart(4, '0')}`,
     customer_id: q.customer_id,
     customer: `Customer #${q.customer_id || 1}`,
+    sales_rep_id: q.sales_rep_id || null,
     salesRep: q.sales_rep_id ? `Sales Rep #${q.sales_rep_id}` : 'Unassigned',
     salesRepRole: 'Account Executive',
     date: createdDate,
     validUntil: '30 Sep 2026',
     status: q.status || 'draft',
     stage: formatQuotationStatus(q.status || 'draft'),
-    subtotal: Math.round(subtotal),
-    discountAmount: Math.round(totalDiscount),
-    netSubtotal: Math.round(netSubtotal),
-    taxAmount: Math.round(taxAmount),
-    total: Math.round(grandTotal),
-    amount: Math.round(grandTotal),
-    avgDiscountPercent: lines.length > 0
-      ? parseFloat(
-          (
-            (lines.reduce((acc, l) => acc + (parseFloat(l.discount_pct) || 0), 0) / lines.length) *
-            100
-          ).toFixed(1)
-        )
-      : 0,
-    discount: lines.length > 0
-      ? `${(
-          (lines.reduce((acc, l) => acc + (parseFloat(l.discount_pct) || 0), 0) / lines.length) *
-          100
-        ).toFixed(0)}%`
-      : '0%',
+    subtotal: Math.max(0, Math.round(subtotal)),
+    discountAmount: Math.max(0, Math.round(totalDiscount)),
+    netSubtotal: Math.max(0, Math.round(netSubtotal)),
+    taxAmount: Math.max(0, Math.round(taxAmount)),
+    total: Math.max(0, Math.round(grandTotal)),
+    amount: Math.max(0, Math.round(grandTotal)),
+    avgDiscountPercent: parseFloat(Math.min(100, Math.max(0, avgDiscount)).toFixed(1)),
+    discount: `${Math.min(100, Math.max(0, Math.round(avgDiscount)))}%`,
     risk: parseFloat(q.blended_risk_score || 0) > 20 ? 'High' : 'Low',
     lineItemsCount: lines.length,
     items,

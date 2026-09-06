@@ -7,6 +7,7 @@ import { formatCurrency } from '../../utils/formatters';
 import productService from '../../services/productService';
 import subscriptionService from '../../services/subscriptionService';
 import quotationService, { LINE_TYPES } from '../../services/quotationService';
+import discountRuleService from '../../services/discountRuleService';
 import taxService from '../../services/taxService';
 import { parseApiError } from '../../utils/errorHandler';
 import { useToast } from '../ui/Toast';
@@ -16,6 +17,7 @@ export function CustomerCreateQuotationModal({ isOpen, onClose, user, onQuotatio
 
   const [products, setProducts] = useState([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
+  const [maxDiscountLimit, setMaxDiscountLimit] = useState(15);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
 
   const [lines, setLines] = useState([]);
@@ -35,13 +37,21 @@ export function CustomerCreateQuotationModal({ isOpen, onClose, user, onQuotatio
       setSubmitError('');
       setValidationErrors({});
       try {
-        const [productList, planList] = await Promise.all([
+        const [productList, planList, ruleList] = await Promise.all([
           productService.getProducts({ limit: 100 }),
           subscriptionService.getSubscriptionPlans(),
+          discountRuleService.getDiscountRules().catch(() => []),
         ]);
 
         setProducts(productList);
         setSubscriptionPlans(planList);
+
+        if (Array.isArray(ruleList) && ruleList.length > 0) {
+          const maxRulePct = Math.max(
+            ...ruleList.map((r) => (Number(r.max_discount_pct) || 0) * 100)
+          );
+          if (maxRulePct > 0) setMaxDiscountLimit(maxRulePct);
+        }
 
         // Initialize with 1 line item from real catalog
         if (productList.length > 0) {
@@ -150,8 +160,8 @@ export function CustomerCreateQuotationModal({ isOpen, onClose, user, onQuotatio
       if (l.unit_price === '' || Number(l.unit_price) < 0) {
         errors[`line_${idx}_price`] = `Line ${idx + 1}: Price must be valid.`;
       }
-      if (l.discount_pct < 0 || l.discount_pct > 100) {
-        errors[`line_${idx}_disc`] = `Line ${idx + 1}: Discount must be between 0 and 100%.`;
+      if (l.discount_pct < 0 || l.discount_pct > maxDiscountLimit) {
+        errors[`line_${idx}_disc`] = `Line ${idx + 1}: Discount cannot exceed applicable configured maximum (${maxDiscountLimit}%).`;
       }
       if (l.line_type === LINE_TYPES.SUBSCRIPTION && !l.subscription_plan_id) {
         errors[`line_${idx}_plan`] = `Line ${idx + 1}: Subscription plan is required for subscription lines.`;

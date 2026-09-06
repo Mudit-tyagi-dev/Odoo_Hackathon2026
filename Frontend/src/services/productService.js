@@ -43,10 +43,44 @@ export async function getProductCategories() {
   return [];
 }
 
+/**
+ * Create a new product.
+ * @param {Object} payload { name, category_id, base_price, cost_price, product_type, description }
+ * @returns {Promise<Object>} Created product response
+ */
+export async function createProduct(payload) {
+  const response = await api.post('/products', payload);
+  return response.data;
+}
+
+/**
+ * Update an existing product by ID via PATCH /products/{product_id}.
+ * @param {number|string} productId
+ * @param {Object} payload Partial product fields to update
+ * @returns {Promise<Object>} Updated product response
+ */
+export async function updateProduct(productId, payload) {
+  const response = await api.patch(`/products/${productId}`, payload);
+  return response.data;
+}
+
+/**
+ * Delete a product by ID via DELETE /products/{product_id}.
+ * @param {number|string} productId
+ * @returns {Promise<Object>} Deletion detail message
+ */
+export async function deleteProduct(productId) {
+  const response = await api.delete(`/products/${productId}`);
+  return response.data;
+}
+
 const productService = {
   getProducts,
   getProduct,
   getProductCategories,
+  createProduct,
+  updateProduct,
+  deleteProduct,
 };
 
 export default productService;
