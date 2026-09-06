@@ -59,6 +59,7 @@ export async function getQuotations({ offset = 0, limit = 100 } = {}) {
 
 /**
  * Create a new quotation via POST /quotations.
+ * NOTE: Backend expects discount_pct as 0-1 fraction (e.g. 0.1 for 10%)
  */
 export async function createQuotation(data) {
   const payload = {
@@ -67,7 +68,8 @@ export async function createQuotation(data) {
       product_id: Number(line.product_id),
       quantity: Math.max(1, Number(line.quantity) || 1),
       unit_price: Math.max(0, Number(line.unit_price) || 0),
-      discount_pct: Math.min(100, Math.max(0, Number(line.discount_pct) || 0)),
+      // API expects 0-1 fraction; UI stores 0-100 percent → divide by 100
+      discount_pct: Math.min(1, Math.max(0, (Number(line.discount_pct) || 0) / 100)),
       line_type: line.line_type || LINE_TYPES.ONE_TIME,
       subscription_plan_id:
         line.line_type === LINE_TYPES.SUBSCRIPTION && line.subscription_plan_id
@@ -81,20 +83,93 @@ export async function createQuotation(data) {
 }
 
 /**
+ * Update a quotation via PATCH /quotations/{quotation_id}.
+ * Used for counter-offer / editing lines.
+ * NOTE: Backend expects discount_pct as 0-1 fraction.
+ */
+export async function updateQuotation(quotationId, data) {
+  const payload = {
+    lines: (data.lines || []).map((line) => ({
+      product_id: Number(line.product_id),
+      quantity: Math.max(1, Number(line.quantity) || 1),
+      unit_price: Math.max(0, Number(line.unit_price) || 0),
+      discount_pct: Math.min(1, Math.max(0, (Number(line.discount_pct) || 0) / 100)),
+      line_type: line.line_type || LINE_TYPES.ONE_TIME,
+      subscription_plan_id:
+        line.line_type === LINE_TYPES.SUBSCRIPTION && line.subscription_plan_id
+          ? Number(line.subscription_plan_id)
+          : null,
+    })),
+  };
+
+  const response = await api.patch(`/quotations/${quotationId}`, payload);
+  return response.data;
+}
+
+/**
+ * Submit a quotation for approval via POST /quotations/{id}/submit
+ */
+export async function submitQuotation(quotationId) {
+  const response = await api.post(`/quotations/${quotationId}/submit`);
+  return response.data;
+}
+
+/**
+ * Approve a quotation via POST /quotations/{id}/approve
+ */
+export async function approveQuotation(quotationId) {
+  const response = await api.post(`/quotations/${quotationId}/approve`);
+  return response.data;
+}
+
+/**
+ * Reject a quotation via POST /quotations/{id}/reject
+ */
+export async function rejectQuotation(quotationId, reason = '') {
+  const response = await api.post(`/quotations/${quotationId}/reject`, null, {
+    params: reason ? { reason } : {},
+  });
+  return response.data;
+}
+
+/**
+ * Confirm a quotation (customer acceptance) via POST /quotations/{id}/confirm
+ */
+export async function confirmQuotation(quotationId) {
+  const response = await api.post(`/quotations/${quotationId}/confirm`);
+  return response.data;
+}
+
+/**
+ * Claim a quotation (sales rep claims) via POST /quotations/{id}/claim
+ */
+export async function claimQuotation(quotationId) {
+  const response = await api.post(`/quotations/${quotationId}/claim`);
+  return response.data;
+}
+
+/**
  * Helper to adapt raw API quotation response into UI model format.
+ * NOTE: API returns discount_pct as 0-1 fraction — convert to 0-100 for display.
  */
 export function normalizeQuotation(q, productsMap = {}, plansMap = {}) {
   if (!q) return null;
 
   const lines = q.lines || [];
   let subtotal = 0;
+  let totalDiscount = 0;
 
   const items = lines.map((l, idx) => {
     const qty = Number(l.quantity) || 1;
     const price = parseFloat(l.unit_price) || 0;
-    const disc = parseFloat(l.discount_pct) || 0;
-    const lineNet = qty * price * (1 - disc / 100);
-    subtotal += lineNet;
+    // API stores discount_pct as 0-1 fraction → convert to 0-100 for display
+    const discFraction = parseFloat(l.discount_pct) || 0;
+    const discPercent = discFraction * 100; // 0-100 for display
+    const lineGross = qty * price;
+    const lineDiscount = lineGross * discFraction;
+    const lineNet = lineGross - lineDiscount;
+    subtotal += lineGross;
+    totalDiscount += lineDiscount;
 
     const prod = productsMap[l.product_id] || {};
     const plan = plansMap[l.subscription_plan_id] || {};
@@ -107,22 +182,45 @@ export function normalizeQuotation(q, productsMap = {}, plansMap = {}) {
       quantity: qty,
       unitPrice: price,
       price: price,
-      discountPercent: disc,
-      discount: disc,
+      // Display as 0-100 percent
+      discountPercent: parseFloat(discPercent.toFixed(2)),
+      discount: parseFloat(discPercent.toFixed(2)),
+      // Store raw 0-1 fraction for backend operations
+      discount_pct_fraction: discFraction,
       line_type: l.line_type || LINE_TYPES.ONE_TIME,
       subscription_plan_id: l.subscription_plan_id,
-      subscriptionPlanName: plan.product?.name ? `${plan.product.name} (${plan.billing_cycle})` : `Plan #${l.subscription_plan_id}`,
+      subscriptionPlanName:
+        plan.product?.name
+          ? `${plan.product.name} (${plan.billing_cycle})`
+          : l.subscription_plan_id
+          ? `Plan #${l.subscription_plan_id}`
+          : null,
       billingCycle: plan.billing_cycle || 'monthly',
-      total: lineNet,
+      total: parseFloat(lineNet.toFixed(2)),
+      lineTotal: parseFloat(lineNet.toFixed(2)),
     };
   });
 
-  const taxAmount = subtotal * 0.18;
-  const grandTotal = subtotal + taxAmount;
+  const netSubtotal = subtotal - totalDiscount;
+  const taxRate = 0.18;
+  const taxAmount = netSubtotal * taxRate;
+  const grandTotal = netSubtotal + taxAmount;
 
   const createdDate = q.created_at
-    ? new Date(q.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    ? new Date(q.created_at).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
     : 'Recently';
+
+  const updatedDate = q.updated_at
+    ? new Date(q.updated_at).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+    : createdDate;
 
   return {
     id: `QT-2026-${String(q.id).padStart(4, '0')}`,
@@ -130,17 +228,32 @@ export function normalizeQuotation(q, productsMap = {}, plansMap = {}) {
     quote: `QT-2026-${String(q.id).padStart(4, '0')}`,
     customer_id: q.customer_id,
     customer: `Customer #${q.customer_id || 1}`,
-    salesRep: q.sales_rep_id ? `Sales Rep #${q.sales_rep_id}` : 'Jordan Lee',
-    salesRepRole: 'Senior Account Executive',
+    salesRep: q.sales_rep_id ? `Sales Rep #${q.sales_rep_id}` : 'Unassigned',
+    salesRepRole: 'Account Executive',
     date: createdDate,
     validUntil: '30 Sep 2026',
     status: q.status || 'draft',
     stage: formatQuotationStatus(q.status || 'draft'),
     subtotal: Math.round(subtotal),
+    discountAmount: Math.round(totalDiscount),
+    netSubtotal: Math.round(netSubtotal),
     taxAmount: Math.round(taxAmount),
     total: Math.round(grandTotal),
     amount: Math.round(grandTotal),
-    discount: `${lines.length > 0 ? (lines.reduce((acc, l) => acc + parseFloat(l.discount_pct || 0), 0) / lines.length).toFixed(0) : 0}%`,
+    avgDiscountPercent: lines.length > 0
+      ? parseFloat(
+          (
+            (lines.reduce((acc, l) => acc + (parseFloat(l.discount_pct) || 0), 0) / lines.length) *
+            100
+          ).toFixed(1)
+        )
+      : 0,
+    discount: lines.length > 0
+      ? `${(
+          (lines.reduce((acc, l) => acc + (parseFloat(l.discount_pct) || 0), 0) / lines.length) *
+          100
+        ).toFixed(0)}%`
+      : '0%',
     risk: parseFloat(q.blended_risk_score || 0) > 20 ? 'High' : 'Low',
     lineItemsCount: lines.length,
     items,
@@ -148,16 +261,16 @@ export function normalizeQuotation(q, productsMap = {}, plansMap = {}) {
     conversation: [
       {
         id: 'msg-init',
-        sender: q.sales_rep_id ? `Sales Rep #${q.sales_rep_id}` : 'Jordan Lee',
+        sender: q.sales_rep_id ? `Sales Rep #${q.sales_rep_id}` : 'DealFlow360 Team',
         senderRole: 'Account Executive',
         isCustomer: false,
         time: createdDate,
-        message: `Quotation created and submitted for Customer #${q.customer_id}.`,
+        message: `Quotation created for Customer #${q.customer_id}. Status: ${formatQuotationStatus(q.status)}.`,
       },
     ],
-    lastUpdated: 'Just now',
-    owner: q.sales_rep_id ? `Sales Rep #${q.sales_rep_id}` : 'Jordan Lee',
-    updated: createdDate,
+    lastUpdated: updatedDate,
+    owner: q.sales_rep_id ? `Sales Rep #${q.sales_rep_id}` : 'Unassigned',
+    updated: updatedDate,
   };
 }
 
@@ -170,6 +283,12 @@ const quotationService = {
   formatLineType,
   getQuotations,
   createQuotation,
+  updateQuotation,
+  submitQuotation,
+  approveQuotation,
+  rejectQuotation,
+  confirmQuotation,
+  claimQuotation,
   normalizeQuotation,
 };
 

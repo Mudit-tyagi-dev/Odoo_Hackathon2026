@@ -1,5 +1,3 @@
-'use client'
-
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Edit3, Eye, FilePlus2, MoreHorizontal, Send, Trash2, X, FileText, CheckCircle2, Clock, AlertCircle, RefreshCw, BarChart2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -13,12 +11,15 @@ import quotationService, { formatQuotationStatus, QUOTATION_STATUS_LABELS } from
 import productService from '../../services/productService'
 import subscriptionService from '../../services/subscriptionService'
 import { parseApiError } from '../../utils/errorHandler'
+import { useToast } from '@/components/ui/Toast'
 
-export function QuotationsScreen({ onNewQuote }) {
+export function QuotationsScreen({ onNewQuote, onViewQuotation }) {
   const { search, setSearch } = useWorkspace()
+  const toast = useToast()
   const [confirm, setConfirm] = useState(false)
-  const [selected, setSelected] = useState('')
+  const [selected, setSelected] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [rawQuotations, setRawQuotations] = useState([])
   const [quotationsLoading, setQuotationsLoading] = useState(false)
@@ -111,13 +112,15 @@ export function QuotationsScreen({ onNewQuote }) {
     }
   }, [rawQuotations])
 
+  const apiSyncLabel = 'Live Backend Data'
+
   return (
     <main className="min-w-0 flex-1 overflow-y-auto bg-muted/30 pb-12">
       {/* Header */}
       <div className="border-b bg-card px-5 py-6 md:px-8">
         <SectionHeader
-          title="Quotations Management"
-          description="Create, review, negotiate, and track customer commercial proposals across all lifecycle stages."
+          title="Quotations"
+          description="Create, review, negotiate, and track commercial proposals across all lifecycle stages."
           action="New Quotation"
           onAction={onNewQuote}
         />
@@ -145,7 +148,7 @@ export function QuotationsScreen({ onNewQuote }) {
           <div className="rounded-xl border border-amber-200/80 bg-amber-50/40 p-4 shadow-2xs">
             <p className="text-xs text-amber-800 font-medium">Pending Approval</p>
             <p className="text-2xl font-bold tracking-tight text-amber-900 mt-1">{kpis.pendingApproval}</p>
-            <p className="text-[11px] text-amber-700 mt-0.5">Governance Review</p>
+            <p className="text-[11px] text-amber-700 mt-0.5">Awaiting Review</p>
           </div>
 
           <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/40 p-4 shadow-2xs">
@@ -180,9 +183,9 @@ export function QuotationsScreen({ onNewQuote }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <BarChart2 className="size-4 text-primary" />
-                  <CardTitle className="text-sm font-semibold">Quotation Status-Wise Pipeline Distribution</CardTitle>
+                  <CardTitle className="text-sm font-semibold">Pipeline Status Distribution</CardTitle>
                 </div>
-                <span className="text-xs text-muted-foreground">GET /quotations API Sync</span>
+                <span className="text-xs text-muted-foreground">{apiSyncLabel}</span>
               </div>
             </CardHeader>
             <CardContent>
@@ -309,34 +312,27 @@ export function QuotationsScreen({ onNewQuote }) {
                               variant="ghost"
                               size="icon"
                               aria-label={`View quotation ${row.quote}`}
-                              onClick={onNewQuote}
+                              onClick={() => onViewQuotation ? onViewQuotation(row) : onNewQuote && onNewQuote()}
                             >
                               <Eye />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label={`Edit quotation ${row.quote}`}
-                              disabled={row.stage === 'Approval'}
-                              onClick={onNewQuote}
-                            >
-                              <Edit3 />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
                               aria-label={`Submit quotation ${row.quote}`}
-                              onClick={() => {
-                                setSelected(row.quote)
+                              onClick={async () => {
+                                if (!row.rawId) return
+                                setSelected(row)
                                 setConfirm(true)
                               }}
                               disabled={row.status !== 'draft'}
+                              title={row.status !== 'draft' ? `Cannot submit: status is ${row.status}` : 'Submit for approval'}
                             >
                               <Send />
                             </Button>
                             <TableActionMenu
                               record={row}
-                              onEdit={onNewQuote}
+                              onEdit={() => onViewQuotation ? onViewQuotation(row) : null}
                             />
                           </div>
                         </td>
@@ -363,9 +359,27 @@ export function QuotationsScreen({ onNewQuote }) {
       <ConfirmDialog
         open={confirm}
         onOpenChange={setConfirm}
-        title={`Submit ${selected} for approval?`}
-        description="The quotation will be locked for editing while approval is pending."
-        onConfirm={() => {}}
+        title={`Submit ${selected?.quote || selected} for approval?`}
+        description="The quotation will be submitted to the approval queue. You can still view it but cannot edit it while pending."
+        onConfirm={async () => {
+          const row = selected
+          if (!row?.rawId) {
+            setConfirm(false)
+            return
+          }
+          setIsSubmitting(true)
+          try {
+            await quotationService.submitQuotation(row.rawId)
+            toast.success(`Quotation ${row.quote} submitted for approval.`, 'Submitted')
+            await fetchQuotations()
+          } catch (err) {
+            toast.error(parseApiError(err) || 'Failed to submit quotation.', 'Error')
+          } finally {
+            setIsSubmitting(false)
+            setConfirm(false)
+            setSelected(null)
+          }
+        }}
       />
     </main>
   )

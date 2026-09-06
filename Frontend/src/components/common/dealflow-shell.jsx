@@ -39,6 +39,7 @@ import { SalesWorkspace } from './sales-workspace'
 import { WarehouseList, WarehouseDetail, WarehouseForm, AddInventoryScreen } from './warehouse-screen'
 import { useWorkspace, WorkspaceProvider, roleVisibility } from './workspace-context'
 import { useAuth, ROLES } from '@/context/AuthContext'
+import QuotationDetailModal from '../modals/QuotationDetailModal'
 
 // ─────────────────────────────────────────────
 // Nav definition
@@ -56,13 +57,13 @@ const nav = [
     group: 'CONFIGURATION',
     items: [
       { label: 'Products', path: '/products', icon: PackageCheck },
-      { label: 'Price Lists', path: '/price-lists', icon: FileText },
+      // { label: 'Price Lists', path: '/price-lists', icon: FileText },
       { label: 'Discount Rules', path: '/discount-rules', icon: SlidersHorizontal },
       { label: 'Tax & GST Rules', path: '/tax-rules', icon: Percent },
-      { label: 'Approval Chains', path: '/approval-chains', icon: Users },
+      // { label: 'Approval Chains', path: '/approval-chains', icon: Users },
       { label: 'Warehouses', path: '/warehouses', icon: Truck },
       { label: 'Subscription Plans', path: '/subscription-plans', icon: Settings2 },
-      { label: 'Upsell Rules', path: '/upsell-rules', icon: Plus },
+      // { label: 'Upsell Rules', path: '/upsell-rules', icon: Plus },
     ],
   },
 ]
@@ -557,7 +558,7 @@ function RoutedContent() {
     return <QuotationBuilder onBack={() => navigate('/')} />
   }
   if (cleanPath === '/quotations') {
-    return <QuotationsScreen onNewQuote={() => navigate('/quotation-builder')} />
+    return <QuotationsScreenWithModal navigate={navigate} />
   }
   if (cleanPath === '/') {
     return <SalesWorkspace onNewQuote={() => navigate('/quotation-builder')} />
@@ -565,6 +566,28 @@ function RoutedContent() {
 
   // ── Admin / config routes ─────────────────────────────────
   return <AdminScreen section={cleanPath.slice(1)} onAddProduct={() => {}} />
+}
+
+/**
+ * Wraps QuotationsScreen with local state for viewing quotation details.
+ */
+function QuotationsScreenWithModal({ navigate }) {
+  const [selectedQuotation, setSelectedQuotation] = useState(null)
+
+  return (
+    <>
+      <QuotationsScreen
+        onNewQuote={() => navigate('/quotation-builder')}
+        onViewQuotation={(q) => setSelectedQuotation(q)}
+      />
+      <QuotationDetailModal
+        isOpen={!!selectedQuotation}
+        onClose={() => setSelectedQuotation(null)}
+        quotation={selectedQuotation}
+        onUpdateQuotation={(updated) => setSelectedQuotation(updated)}
+      />
+    </>
+  )
 }
 
 /**

@@ -29,7 +29,7 @@ import taxService from '../../services/taxService'
 import { parseApiError } from '../../utils/errorHandler'
 import { useToast } from '@/components/ui/Toast'
 
-const lifecycle = ['Draft', 'Pricing', 'Approval', 'Fulfillment', 'Billing', 'Completed']
+const lifecycle = ['Draft', 'Pending Approval', 'Approved', 'Confirmed']
 
 export function QuotationBuilder({ onBack, onQuotationCreated }) {
   const toast = useToast()
@@ -317,12 +317,12 @@ export function QuotationBuilder({ onBack, onQuotationCreated }) {
               variant="outline"
               onClick={() => {
                 setSaved(true)
-                toast.info('Draft configuration saved in local workspace.')
+                toast.info('Draft configuration saved.')
                 setTimeout(() => setSaved(false), 1800)
               }}
             >
               <Save data-icon="inline-start" />
-              {saved ? 'Saved' : 'Save draft'}
+              {saved ? 'Saved' : 'Save Draft'}
             </Button>
 
             <Button
@@ -338,12 +338,12 @@ export function QuotationBuilder({ onBack, onQuotationCreated }) {
               {isSubmitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin mr-1.5" />
-                  Submitting API...
+                  Submitting...
                 </>
               ) : (
                 <>
                   <ArrowRight data-icon="inline-start" />
-                  Submit Quotation (POST /quotations)
+                  Submit Quotation
                 </>
               )}
             </Button>
@@ -703,7 +703,7 @@ export function QuotationBuilder({ onBack, onQuotationCreated }) {
                 }}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Submitting API...' : 'Submit Quotation'}
+                {isSubmitting ? 'Submitting...' : 'Submit Quotation'}
               </Button>
             </CardContent>
           </Card>
@@ -714,7 +714,7 @@ export function QuotationBuilder({ onBack, onQuotationCreated }) {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Confirm Quotation Creation?"
-        description={`This action will post the quotation payload to backend API (POST /quotations) with ${items.length} line items and total value ${formatCurrency(totalContractValue)}.`}
+        description={`This will create a new quotation with ${items.length} line item${items.length !== 1 ? 's' : ''} and a total value of ${formatCurrency(totalContractValue)}. The quotation will start in Draft status.`}
         onConfirm={handleSubmitQuotation}
       />
     </main>
