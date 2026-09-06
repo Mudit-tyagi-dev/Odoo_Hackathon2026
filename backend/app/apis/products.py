@@ -8,6 +8,8 @@ from sqlalchemy.orm import joinedload
 from app.core.db import get_db
 from app.core.enums import ProductType
 from app.models.product import Category, Product
+from app.models.users import User
+from app.core.security import get_current_user, authorize_customer, authorize_fo, authorize_sales_mang, authorize_sales_rep
 from app.schemas.product import (
     CategoryCreate,
     CategoryResponse,
@@ -28,8 +30,14 @@ product_router = APIRouter(prefix="/products", tags=["Products"])
 async def create_category(
     payload: CategoryCreate,
     db: AsyncSession = Depends(get_db),
+    user: User =  Depends(get_current_user)
 ):
     """Create a new product category."""
+    await authorize_customer(user)
+    await authorize_sales_rep(user)
+    await authorize_sales_mang(user)
+    await authorize_fo(user)
+
     # Check duplicate category name
     stmt = select(Category).where(func.lower(Category.name) == payload.name.strip().lower())
     result = await db.execute(stmt)
@@ -156,8 +164,13 @@ async def get_category(
 async def create_product(
     payload: ProductCreate,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """Create a new product."""
+    await authorize_customer(user)
+    await authorize_sales_rep(user)
+    await authorize_sales_mang(user)
+    await authorize_fo(user)
     # Verify category exists
     cat_stmt = select(Category).where(Category.id == payload.category_id)
     cat_res = await db.execute(cat_stmt)
@@ -197,6 +210,7 @@ async def list_products(
     skip: int = Query(0, ge=0, description="Offset / skip count"),
     limit: int = Query(20, ge=1, le=100, description="Pagination size limit (20 to 100)"),
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """List all products with filtering and pagination."""
     stmt = select(Product).options(joinedload(Product.category))
@@ -222,6 +236,7 @@ async def list_products(
 async def get_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """Get a single product by ID."""
     stmt = select(Product).options(joinedload(Product.category)).where(Product.id == product_id)
@@ -242,8 +257,14 @@ async def update_product(
     product_id: int,
     payload: ProductUpdate,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Update a product by ID."""
+    await authorize_customer(user)
+    await authorize_sales_rep(user)
+    await authorize_sales_mang(user)
+    await authorize_fo(user)
+
     stmt = select(Product).where(Product.id == product_id)
     result = await db.execute(stmt)
     product = result.scalar_one_or_none()
@@ -288,8 +309,14 @@ async def update_product(
 async def delete_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     """Delete a product by ID."""
+    await authorize_customer(user)
+    await authorize_sales_rep(user)
+    await authorize_sales_mang(user)
+    await authorize_fo(user)
+
     stmt = select(Product).where(Product.id == product_id)
     result = await db.execute(stmt)
     product = result.scalar_one_or_none()

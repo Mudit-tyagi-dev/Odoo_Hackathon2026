@@ -26,6 +26,8 @@ class SubscriptionPlan(Base):
 
     product: Mapped["Product"] = relationship(back_populates="subscription_plans")
     quotation_lines: Mapped[List["QuotationLine"]] = relationship(back_populates="subscription_plan")
+    subscriptions: Mapped[List["Subscription"]] = relationship(back_populates="subscription_plan")
+
 
 class Subscription(Base):
     __tablename__ = "subscriptions"

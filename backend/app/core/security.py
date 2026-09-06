@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
+from app.core.enums import UserRole
 from app.core.settings import settings
 from app.models.users import User
 
@@ -107,3 +108,19 @@ async def get_current_user(
         )
 
     return user
+
+async def authorize_customer(user: User) -> bool:
+    if user.role == UserRole.CUSTOMER:
+            raise HTTPException(403, "You are not authorized to perform this action")
+
+async def authorize_sales_rep(user: User) -> bool:
+    if user.role == UserRole.SALES_REP:
+        raise HTTPException(403, "You are not authorized to perform this action")
+
+async def authorize_sales_mang(user: User) -> bool:
+    if user.role == UserRole.SALES_MANAGER:
+        raise HTTPException(403, "You are not authorized to perform this action")
+
+async def authorize_fo(user: User) -> bool:
+    if user.role == UserRole.FINANCE:
+        raise HTTPException(403, "You are not authorized to perform this action")

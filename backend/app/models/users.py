@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from app.models.audit import QuotationAuditLog
     from app.models.customer import Customer
     from app.models.quotation import Quotation
+    from .subscription import Subscription
 
 
 class User(Base, TimestampMixin):
@@ -27,9 +28,17 @@ class User(Base, TimestampMixin):
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole, name="user_role"), nullable=False, index=True, default= "customer")
 
     # relationships
-    quotations_as_rep: Mapped[List["Quotation"]] = relationship(
-        back_populates="sales_rep", foreign_keys="Quotation.sales_rep_id"
-    )
     approvals_acted: Mapped[List["Approval"]] = relationship(back_populates="approver")
     portal_customer: Mapped["Customer | None"] = relationship(back_populates="portal_user", uselist=False)
     audit_entries: Mapped[List["QuotationAuditLog"]] = relationship(back_populates="actor")
+    subscriptions: Mapped[List["Subscription"]] = relationship(back_populates="user")
+
+    quotations_as_customer: Mapped[List["Quotation"]] = relationship(
+        back_populates="customer",
+        foreign_keys="Quotation.customer_id",
+    )
+
+    quotations_as_rep: Mapped[List["Quotation"]] = relationship(
+        back_populates="sales_rep",
+        foreign_keys="Quotation.sales_rep_id",
+    )

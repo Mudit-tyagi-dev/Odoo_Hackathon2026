@@ -30,10 +30,10 @@ class Customer(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
-    tier_id: Mapped[int] = mapped_column(ForeignKey("customer_tiers.id"), nullable=False, index=True)
+    # tier_id: Mapped[int] = mapped_column(ForeignKey("customer_tiers.id"), nullable=False, index=True)
     # nullable + unique: a customer *may* have portal login credentials, but if they do, it's 1:1
     portal_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), unique=True)
 
     # tier: Mapped["CustomerTier"] = relationship(back_populates="customers")
     portal_user: Mapped["User | None"] = relationship(back_populates="portal_customer")
-    quotations: Mapped[List["Quotation"]] = relationship(back_populates="customer")
+    # quotations: Mapped[List["Quotation"]] = relationship(back_populates="customer")

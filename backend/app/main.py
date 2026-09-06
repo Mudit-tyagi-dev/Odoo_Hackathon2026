@@ -7,6 +7,8 @@ from app.apis.products import product_router
 from app.apis.warehouse import warehouse_router
 from app.apis.warehouse_stock import warehouse_stock_router
 from app.apis.discount_rules import discount_router
+from app.apis.subscriptions import sub_router
+from app.apis.quotation import quotation_router
 import time
 
 
@@ -48,6 +50,9 @@ app.include_router(product_router)
 app.include_router(warehouse_router)
 app.include_router(warehouse_stock_router)
 app.include_router(discount_router)
+app.include_router(sub_router)
+app.include_router(quotation_router)
+
 
 
 
