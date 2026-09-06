@@ -1,11 +1,3 @@
-/**
- * Auth language helper — the SINGLE language state shared by the Login/Signup
- * pages and errorHandler.parseApiError().
- *
- * One localStorage key ("language") holds the selection made on Login/Signup
- * ("en" | "hi" | "gu"). Nothing else in the application reads this key — the
- * main application intentionally stays in English.
- */
 
 export const LANGUAGE_STORAGE_KEY = "language";
 
@@ -35,7 +27,6 @@ export function saveLanguage(lang) {
   }
 }
 
-/* ── Login page strings ─────────────────────────────────── */
 export const LOGIN_TRANSLATIONS = {
   en: {
     signIn: "Sign In",

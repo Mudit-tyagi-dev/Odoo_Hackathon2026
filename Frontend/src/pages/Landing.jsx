@@ -125,10 +125,10 @@ export const Landing = () => {
 
         <div className="relative max-w-4xl mx-auto space-y-6">
           {/* Hackathon badge */}
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-700 shadow-sm">
+          {/* <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-700 shadow-sm">
             <Star className="w-3.5 h-3.5 fill-blue-500 text-blue-500" />
             Odoo Hackathon 2026 — B2B Sales Platform
-          </span>
+          </span> */}
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
             Close Better Deals.{" "}
