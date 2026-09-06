@@ -24,6 +24,7 @@ import {
   Users,
   LogOut,
   ExternalLink,
+  Percent,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Separator } from '@/components/ui/separator'
@@ -57,6 +58,7 @@ const nav = [
       { label: 'Products', path: '/products', icon: PackageCheck },
       { label: 'Price Lists', path: '/price-lists', icon: FileText },
       { label: 'Discount Rules', path: '/discount-rules', icon: SlidersHorizontal },
+      { label: 'Tax & GST Rules', path: '/tax-rules', icon: Percent },
       { label: 'Approval Chains', path: '/approval-chains', icon: Users },
       { label: 'Warehouses', path: '/warehouses', icon: Truck },
       { label: 'Subscription Plans', path: '/subscription-plans', icon: Settings2 },
@@ -621,9 +623,14 @@ function DealFlowApp() {
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-screen flex-col bg-background relative">
+        <div className="aurora-bg-mesh">
+          <div className="aurora-blob aurora-blob-1" />
+          <div className="aurora-blob aurora-blob-2" />
+          <div className="aurora-blob aurora-blob-3" />
+        </div>
         <Header />
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 z-10">
           <div className="hidden md:block">
             <Sidebar />
           </div>

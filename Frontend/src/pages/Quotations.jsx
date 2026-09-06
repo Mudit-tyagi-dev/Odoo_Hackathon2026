@@ -13,29 +13,39 @@ import {
 } from "lucide-react";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
+import { formatQuotationStatus, QUOTATION_STATUS_LABELS } from "../services/quotationService";
+import CustomerCreateQuotationModal from "../components/modals/CustomerCreateQuotationModal";
 
 export const Quotations = ({
-  quotations,
+  quotations = [],
   onSelectQuotation,
   onOpenDeleteModal,
+  user,
+  onRefreshQuotations,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Filter & sort logic
   const filteredQuotations = useMemo(() => {
     return quotations
       .filter((q) => {
+        const statusLabel = formatQuotationStatus(q.status);
         const matchesQuery =
-          q.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          q.salesRep.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          q.status.toLowerCase().includes(searchQuery.toLowerCase());
+          (q.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (q.salesRep || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (q.status || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          statusLabel.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesStatus =
-          statusFilter === "all" || q.status === statusFilter;
+          statusFilter === "all" ||
+          q.status === statusFilter ||
+          statusLabel === QUOTATION_STATUS_LABELS[statusFilter] ||
+          q.status?.toLowerCase() === statusFilter.toLowerCase();
 
         const matchesDate = (() => {
           if (dateRange === "all") return true;
@@ -89,19 +99,30 @@ export const Quotations = ({
             Compare offers, negotiate terms, and confirm when you're ready
           </p>
         </div>
-        {/* Date range dropdown button */}
-        <div className="relative self-start sm:self-center">
+        {/* Action Controls & Date range dropdown */}
+        <div className="flex items-center gap-3 self-start sm:self-center">
           <Button
-            variant="outline"
+            variant="primary"
             size="sm"
-            onClick={() => setDateRangeOpen(!dateRangeOpen)}
-            className={`gap-2 border-input bg-card text-foreground hover:bg-muted shadow-2xs ${dateRange !== "all" ? "border-primary text-primary font-semibold" : ""}`}
+            onClick={() => setIsCreateModalOpen(true)}
+            className="gap-1.5 font-semibold text-xs shadow-sm cursor-pointer"
           >
-            <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-            <span>{dateLabel}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            <Plus className="w-4 h-4" />
+            <span>Create New Quotation</span>
           </Button>
-          {dateRangeOpen && (
+
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDateRangeOpen(!dateRangeOpen)}
+              className={`gap-2 border-input bg-card text-foreground hover:bg-muted shadow-2xs ${dateRange !== "all" ? "border-primary text-primary font-semibold" : ""}`}
+            >
+              <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              <span>{dateLabel}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            </Button>
+            {dateRangeOpen && (
             <div className="absolute right-0 mt-1 w-48 bg-popover text-popover-foreground rounded-xl shadow-lg border border-border p-2 z-20 text-xs">
               <button
                 onClick={() => {
@@ -134,6 +155,7 @@ export const Quotations = ({
           )}
         </div>
       </div>
+    </div>
 
       {/* Filter & Search Bar */}
       <div className="space-y-2">
@@ -159,11 +181,12 @@ export const Quotations = ({
               className="px-3 py-2 text-xs sm:text-sm rounded-xl border border-input bg-background text-foreground outline-none focus:border-primary cursor-pointer"
             >
               <option value="all">All statuses</option>
-              <option value="Under Negotiation">Under Negotiation</option>
-              <option value="Sent">Sent</option>
-              <option value="Confirmed">Confirmed</option>
-              <option value="Awaiting Approval">Awaiting Approval</option>
-              <option value="Cancelled">Cancelled</option>
+              <option value="draft">Draft</option>
+              <option value="pending_approval">Pending Approval</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="negotiating">Negotiating</option>
+              <option value="confirmed">Confirmed</option>
             </select>
 
             {/* Sort dropdown */}
@@ -268,7 +291,7 @@ export const Quotations = ({
 
                     {/* Status Badge */}
                     <td className="py-4 px-6">
-                      <Badge variant={q.status}>{q.status}</Badge>
+                      <Badge variant={q.status}>{formatQuotationStatus(q.status)}</Badge>
                     </td>
 
                     {/* Last Updated */}
@@ -321,6 +344,17 @@ export const Quotations = ({
           </table>
         </div>
       </div>
+
+      {/* Customer Quotation Creation Modal */}
+      <CustomerCreateQuotationModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        user={user}
+        onQuotationCreated={(newQuotation) => {
+          if (onRefreshQuotations) onRefreshQuotations();
+          if (onSelectQuotation) onSelectQuotation(newQuotation);
+        }}
+      />
     </div>
   );
 };

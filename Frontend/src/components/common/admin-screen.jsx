@@ -20,6 +20,7 @@ import productService from '../../services/productService'
 import { getSubscriptionPlans } from '../../services/subscriptionService'
 import { parseApiError } from '../../utils/errorHandler'
 import { formatCurrency } from '../../utils/formatters'
+import taxService from '../../services/taxService'
 const PAGE_SIZE_OPTIONS = [20, 40, 60, 80, 100]
 
 const PRODUCT_TYPE_LABELS = {
@@ -82,6 +83,21 @@ export function AdminScreen({ section, onAddProduct }) {
   const [subscriptionPlans, setSubscriptionPlans] = useState([])
   const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false)
   const [subscriptionPlansError, setSubscriptionPlansError] = useState('')
+
+  // Tax configuration state
+  const [taxRules, setTaxRules] = useState(() => taxService.getTaxRules())
+
+  const handleToggleTaxActive = (id) => {
+    const updated = taxService.setActiveTaxRule(id)
+    setTaxRules(updated)
+    toast.success('Active tax configuration updated for quotations.')
+  }
+
+  const handleUpdateTaxPercentage = (id, newPct) => {
+    const updated = taxService.updateTaxRule(id, { percentage: Number(newPct) || 0 })
+    setTaxRules(updated)
+    toast.info('Tax percentage rate updated.')
+  }
 
   const [sortBy, setSortBy] = useState('name')
   const [sortDirection, setSortDirection] = useState('asc')
@@ -434,6 +450,71 @@ export function AdminScreen({ section, onAddProduct }) {
               emptyDescription="This configuration module will synchronize with the backend once the corresponding management endpoints are available."
             />
           )
+        ) : section === 'tax-rules' ? (
+          <Card className="shadow-none">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[700px]">
+                  <thead>
+                    <tr className="border-b bg-muted/25 text-left text-xs text-muted-foreground font-semibold">
+                      <th className="px-4 py-3">Tax Rule Name</th>
+                      <th className="px-4 py-3">Code</th>
+                      <th className="px-4 py-3">GST Rate (%)</th>
+                      <th className="px-4 py-3">Category Scope</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {taxRules.map((rule) => (
+                      <tr key={rule.id} className="hover:bg-muted/20">
+                        <td className="px-4 py-3.5">
+                          <p className="font-semibold text-foreground">{rule.name}</p>
+                          <p className="text-xs text-muted-foreground">{rule.description}</p>
+                        </td>
+                        <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">{rule.code}</td>
+                        <td className="px-4 py-3.5">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={rule.percentage}
+                            onChange={(e) => handleUpdateTaxPercentage(rule.id, e.target.value)}
+                            className="w-20 rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:border-primary font-bold"
+                          />
+                          <span className="ml-1 text-xs font-semibold">%</span>
+                        </td>
+                        <td className="px-4 py-3.5 text-xs capitalize text-foreground font-medium">
+                          {rule.applicableCategory}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                              rule.isActive
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-slate-100 text-slate-600 border border-slate-200'
+                            }`}
+                          >
+                            {rule.isActive ? 'Active (Applied to Quotes)' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <Button
+                            variant={rule.isActive ? 'secondary' : 'outline'}
+                            size="sm"
+                            onClick={() => handleToggleTaxActive(rule.id)}
+                            className="text-xs"
+                          >
+                            {rule.isActive ? 'Active' : 'Set Active Rule'}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <DataTable
             columns={config?.columns || []}

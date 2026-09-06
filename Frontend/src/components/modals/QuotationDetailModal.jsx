@@ -10,6 +10,7 @@ import {
   HelpCircle,
   Clock,
   ShieldCheck,
+  FileText,
 } from "lucide-react";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
@@ -17,6 +18,8 @@ import Input from "../ui/Input";
 import Textarea from "../ui/Textarea";
 import { validateCounterOffer } from "../../utils/validation";
 import { useToast } from "../ui/Toast";
+import BillInvoiceModal from "./BillInvoiceModal";
+import { formatQuotationStatus } from "../../services/quotationService";
 
 export const QuotationDetailModal = ({
   isOpen,
@@ -26,6 +29,7 @@ export const QuotationDetailModal = ({
 }) => {
   const toast = useToast();
   const [showCounterForm, setShowCounterForm] = useState(false);
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [discountPercent, setDiscountPercent] = useState("15");
   const [counterNote, setCounterNote] = useState("");
   const [counterErrors, setCounterErrors] = useState({});
@@ -266,17 +270,28 @@ export const QuotationDetailModal = ({
                     Quotation line items
                   </h3>
                 </div>
-                {quotation.status !== "Confirmed" && (
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowCounterForm(!showCounterForm)}
-                    className="gap-1.5"
+                    onClick={() => setIsInvoiceOpen(true)}
+                    className="gap-1.5 border-blue-200 text-blue-700 bg-blue-50/50 hover:bg-blue-100/60"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Make a counter offer</span>
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    <span>View Bill / Invoice</span>
                   </Button>
-                )}
+                  {quotation.status !== "Confirmed" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCounterForm(!showCounterForm)}
+                      className="gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Make a counter offer</span>
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Counter offer drawer / form */}
@@ -496,6 +511,13 @@ export const QuotationDetailModal = ({
           </div>
         </div>
       </div>
+
+      {/* Bill / Invoice View Modal */}
+      <BillInvoiceModal
+        isOpen={isInvoiceOpen}
+        onClose={() => setIsInvoiceOpen(false)}
+        quotation={quotation}
+      />
     </div>
   );
 };
