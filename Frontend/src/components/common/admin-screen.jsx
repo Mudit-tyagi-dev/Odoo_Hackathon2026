@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/Toast'
 import api from '../../services/api'
 import productService from '../../services/productService'
 import { getSubscriptionPlans } from '../../services/subscriptionService'
+import discountRuleService from '../../services/discountRuleService'
 import { parseApiError } from '../../utils/errorHandler'
 import { formatCurrency } from '../../utils/formatters'
 import taxService from '../../services/taxService'
@@ -83,6 +84,11 @@ export function AdminScreen({ section, onAddProduct }) {
   const [subscriptionPlans, setSubscriptionPlans] = useState([])
   const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(false)
   const [subscriptionPlansError, setSubscriptionPlansError] = useState('')
+
+  // Discount Rules state — populated from GET /discount-rules/
+  const [discountRulesData, setDiscountRulesData] = useState([])
+  const [discountRulesLoading, setDiscountRulesLoading] = useState(false)
+  const [discountRulesError, setDiscountRulesError] = useState('')
 
   // Tax configuration state
   const [taxRules, setTaxRules] = useState(() => taxService.getTaxRules())
@@ -259,6 +265,26 @@ export function AdminScreen({ section, onAddProduct }) {
     }
   }, [section, fetchSubscriptionPlans])
 
+  // Fetch real discount rules from GET /discount-rules/ when the page mounts
+  const fetchDiscountRules = useCallback(async () => {
+    setDiscountRulesLoading(true)
+    setDiscountRulesError('')
+    try {
+      const data = await discountRuleService.getDiscountRules()
+      setDiscountRulesData(data)
+    } catch (err) {
+      setDiscountRulesError(parseApiError(err) || 'Failed to load discount rules.')
+    } finally {
+      setDiscountRulesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (section === 'discount-rules') {
+      fetchDiscountRules()
+    }
+  }, [section, fetchDiscountRules])
+
   // Process rows with real search, sorting, and category filter
   const rows =
     section === 'products'
@@ -321,7 +347,7 @@ export function AdminScreen({ section, onAddProduct }) {
               'Active',
             ]
           })
-      : section === 'subscription-plans'
+        : section === 'subscription-plans'
         ? subscriptionPlans.map((plan) => [
             plan.product?.name || '—',
             billingCycleLabel(plan.billing_cycle),
@@ -329,6 +355,8 @@ export function AdminScreen({ section, onAddProduct }) {
             '—',
             '—',
           ])
+        : section === 'discount-rules'
+        ? discountRulesData.map((rule) => discountRuleService.mapRuleToRow(rule))
         : config?.rows || []
 
   // ── Pagination (products) ────────────────────────────────────────
@@ -448,6 +476,24 @@ export function AdminScreen({ section, onAddProduct }) {
               search={search}
               emptyText={`No ${title.toLowerCase()} configured.`}
               emptyDescription="This configuration module will synchronize with the backend once the corresponding management endpoints are available."
+            />
+          )
+        ) : section === 'discount-rules' ? (
+          discountRulesLoading ? (
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground animate-pulse">
+              Loading discount rules…
+            </div>
+          ) : discountRulesError ? (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              {discountRulesError}
+            </div>
+          ) : (
+            <DataTable
+              columns={config?.columns || []}
+              rows={rows}
+              search={search}
+              emptyText="No discount rules configured."
+              emptyDescription="No discount rules have been created yet. Use 'Add Discount Rule' to configure tier-based discount guardrails."
             />
           )
         ) : section === 'tax-rules' ? (
