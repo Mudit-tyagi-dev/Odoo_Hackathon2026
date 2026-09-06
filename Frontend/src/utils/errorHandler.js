@@ -1,12 +1,4 @@
 import { getSavedLanguage } from "./authLanguage";
-
-/**
- * Centralized Error & Alert Formatter
- */
-
-// Generic fallback message — the ONLY translated error. The language is the
-// single selection saved by Login/Signup (localStorage "language"); every
-// other message is returned verbatim from the API/error exactly as before.
 const GENERIC_ERROR_MESSAGES = {
   en: "An unexpected error occurred. Please try again or contact support.",
   hi: "एक अप्रत्याशित त्रुटि हुई। कृपया पुनः प्रयास करें या सहायता से संपर्क करें।",

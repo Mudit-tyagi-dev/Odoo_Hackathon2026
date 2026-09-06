@@ -21,35 +21,35 @@ export const ROLE_LABELS = {
 };
 
 // Mock credential store for Sales Executive and Admin roles
-const MOCK_USERS = [
-  {
-    id: "usr_001",
-    email: "rohan@acme-corp.com",
-    password: "Customer@123",
-    role: ROLES.CUSTOMER,
-    name: "Rohan Kapoor",
-    company: "Acme Corporation",
-    initials: "RK",
-  },
-  {
-    id: "usr_002",
-    email: "aarav@dealflow360.com",
-    password: "Sales@123",
-    role: ROLES.SALES_EXECUTIVE,
-    name: "Aarav Mehta",
-    company: "DealFlow360",
-    initials: "AM",
-  },
-  {
-    id: "usr_003",
-    email: "admin@dealflow360.com",
-    password: "Admin@123",
-    role: ROLES.ADMIN,
-    name: "Priya Sharma",
-    company: "DealFlow360",
-    initials: "PS",
-  },
-];
+// const MOCK_USERS = [
+//   {
+//     id: "usr_001",
+//     email: "rohan@acme-corp.com",
+//     password: "Customer@123",
+//     role: ROLES.CUSTOMER,
+//     name: "Rohan Kapoor",
+//     company: "Acme Corporation",
+//     initials: "RK",
+//   },
+//   {
+//     id: "usr_002",
+//     email: "aarav@dealflow360.com",
+//     password: "Sales@123",
+//     role: ROLES.SALES_EXECUTIVE,
+//     name: "Aarav Mehta",
+//     company: "DealFlow360",
+//     initials: "AM",
+//   },
+//   {
+//     id: "usr_003",
+//     email: "admin@dealflow360.com",
+//     password: "Admin@123",
+//     role: ROLES.ADMIN,
+//     name: "Priya Sharma",
+//     company: "DealFlow360",
+//     initials: "PS",
+//   },
+// ];
 
 const AuthContext = createContext(null);
 
@@ -66,12 +66,7 @@ export const AuthProvider = ({ children }) => {
   const isAuthenticated = !!user;
   const role = user?.role || null;
 
-  /**
-   * Login — routes to the real backend API for Customer role,
-   * falls back to mock auth for Sales Executive and Admin roles.
-   * Customer: POST /auth/login (body: { email, password })
-   *           Response: { access_token, user: { id, email, name, role, phone, created_at } }
-   */
+
   const login = useCallback(async ({ email, password, selectedRole }) => {
     if (selectedRole === ROLES.CUSTOMER) {
       try {
@@ -131,12 +126,6 @@ export const AuthProvider = ({ children }) => {
     setUser(sessionUser);
     return sessionUser;
   }, []);
-
-  /**
-   * Signup — calls the real backend API.
-   * POST /auth/signup
-   * Signup is customer-only (role is always "customer").
-   */
   const signup = useCallback(async ({ email, password, name, phone }) => {
     try {
       const response = await api.post("/auth/signup", {
@@ -163,10 +152,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  /**
-   * Logout — clears session.
-   * Replace with: POST /api/auth/logout
-   */
   const logout = useCallback(() => {
     localStorage.removeItem("df360_user");
     localStorage.removeItem("token");
