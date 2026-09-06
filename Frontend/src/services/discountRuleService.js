@@ -55,12 +55,12 @@ function mapRuleToRow(rule) {
     rule.requires_finance_approval
   )
 
-  // 'Status' is a frontend-only display value — not sourced from the API.
+  // 'Status' is a frontend-only display value ï¿½ not sourced from the API.
   const frontendStatus = 'Active'
 
   return [
     rule.name || 'N/A',         // Customer tier
-    'N/A',                      // Product category — API does not provide this field
+    'N/A',                      // Product category ï¿½ API does not provide this field
     maxDiscount,                // Maximum discount (max_discount_pct * 100)%
     approval,                   // Approval required (derived from boolean flags)
     frontendStatus,             // Status (frontend display only)
