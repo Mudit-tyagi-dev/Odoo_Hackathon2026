@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Header from "./components/layout/Header";
 import Sidebar from "./components/layout/Sidebar";
 import Dashboard from "./pages/Dashboard";
@@ -10,6 +10,9 @@ import QuotationDetailModal from "./components/modals/QuotationDetailModal";
 import DeleteQuotationModal from "./components/modals/DeleteQuotationModal";
 import CommandMenu from "./components/modals/CommandMenu";
 import { useAuth } from "./context/AuthContext";
+import quotationService from "./services/quotationService";
+import productService from "./services/productService";
+import subscriptionService from "./services/subscriptionService";
 import {
   INITIAL_USER,
   INITIAL_METRICS,
@@ -42,12 +45,42 @@ export function PortalApp() {
   const [orders, setOrders] = useState(INITIAL_ORDERS);
   const [billingData, setBillingData] = useState(INITIAL_BILLING);
   const [activities, setActivities] = useState(INITIAL_ACTIVITIES);
+  const [quotationsLoading, setQuotationsLoading] = useState(false);
 
   // Modals & Navigation state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [quotationToDelete, setQuotationToDelete] = useState(null);
+
+  // Fetch real quotations from backend API GET /quotations
+  const fetchRealQuotations = useCallback(async () => {
+    setQuotationsLoading(true);
+    try {
+      const [rawQuotes, productList, planList] = await Promise.all([
+        quotationService.getQuotations({ limit: 100 }),
+        productService.getProducts({ limit: 100 }).catch(() => []),
+        subscriptionService.getSubscriptionPlans().catch(() => []),
+      ]);
+
+      const prodMap = (productList || []).reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+      const planMap = (planList || []).reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+
+      const normalized = (rawQuotes || []).map((q) =>
+        quotationService.normalizeQuotation(q, prodMap, planMap)
+      );
+
+      setQuotations(normalized);
+    } catch (err) {
+      console.error('Failed to fetch real quotations:', err);
+    } finally {
+      setQuotationsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRealQuotations();
+  }, [fetchRealQuotations]);
 
   // Sync authUser updates
   useEffect(() => {
@@ -154,7 +187,14 @@ export function PortalApp() {
   ).length;
 
   return (
-    <div className="flex min-h-screen bg-slate-50/50 font-sans antialiased text-slate-900 selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="flex min-h-screen bg-slate-50/50 font-sans antialiased text-slate-900 selection:bg-emerald-100 selection:text-emerald-900 relative">
+      {/* Global Subtle Aurora Background Layer */}
+      <div className="aurora-bg-mesh">
+        <div className="aurora-blob aurora-blob-1" />
+        <div className="aurora-blob aurora-blob-2" />
+        <div className="aurora-blob aurora-blob-3" />
+      </div>
+
       {/* Responsive Sidebar (Desktop fixed + Mobile slide-in drawer) */}
       <Sidebar
         activeTab={activeTab}
@@ -167,7 +207,7 @@ export function PortalApp() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 z-10">
         {/* Sticky Header with Search, Notifications, Profile */}
         <Header
           user={user}
@@ -193,6 +233,8 @@ export function PortalApp() {
           {activeTab === "quotations" && (
             <Quotations
               quotations={quotations}
+              user={user}
+              onRefreshQuotations={fetchRealQuotations}
               onSelectQuotation={(q) => setSelectedQuotation(q)}
               onOpenDeleteModal={(q) => setQuotationToDelete(q)}
             />

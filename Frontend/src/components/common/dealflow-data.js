@@ -7,20 +7,8 @@ export const stageData = [
   { label: 'Completed', count: 12, amount: '₹1.08M', tone: 'green' },
 ]
 
-export const deals = [
-  { quote: 'QT-2048', customer: 'Apex Manufacturing', amount: '₹1,28,400', stage: 'Approval', discount: '18%', risk: 'High', activity: '12 min ago', owner: 'Jordan Lee', issue: 'Approval pending' },
-  { quote: 'QT-2043', customer: 'Northwind Logistics', amount: '₹82,000', stage: 'Negotiation', discount: '10%', risk: 'Low', activity: 'Today, 9:42 AM', owner: 'Maya Chen', issue: 'Stalled deal' },
-  { quote: 'QT-2039', customer: 'Vertex Systems', amount: '₹54,600', stage: 'Fulfillment', discount: '8%', risk: 'Low', activity: 'Yesterday', owner: 'Sam Rivera', issue: 'Delivery issue' },
-  { quote: 'QT-2035', customer: 'BluePeak Energy', amount: '₹32,800', stage: 'Draft', discount: '16%', risk: 'Medium', activity: '2 days ago', owner: 'Jordan Lee', issue: 'High-risk discount' },
-  { quote: 'QT-2028', customer: 'Cobalt Health', amount: '₹2,16,000', stage: 'Completed', discount: '12%', risk: 'Low', activity: 'Mar 18', owner: 'Maya Chen', issue: 'Billing issue' },
-]
-
-export const quotationRows = deals.map((deal, index) => ({
-  ...deal,
-  updated: ['2 min ago', 'Today', 'Yesterday', 'Mar 20', 'Mar 18'][index],
-  salesRep: deal.owner,
-  category: ['Hardware', 'Services', 'Subscriptions', 'Hardware', 'Services'][index],
-}))
+export const deals = []
+export const quotationRows = []
 
 // Configuration collection schemas (mock data rows removed; clean empty states rendered until backend APIs exist)
 export const adminCollections = {
@@ -58,6 +46,12 @@ export const adminCollections = {
     title: 'Upsell Rules',
     description: 'Recommend complementary products while protecting margin.',
     columns: ['Product pairing', 'Recommended product', 'Promotion', 'Minimum margin'],
+    rows: [],
+  },
+  'tax-rules': {
+    title: 'Tax / GST Configuration',
+    description: 'Manage Goods & Services Tax (GST) rates, category applicability, and active status.',
+    columns: ['Tax Rule Name', 'Code', 'GST Rate (%)', 'Applicable Category', 'Status', 'Actions'],
     rows: [],
   },
 }

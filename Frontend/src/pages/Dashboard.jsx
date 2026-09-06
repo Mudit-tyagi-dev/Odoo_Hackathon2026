@@ -12,27 +12,28 @@ import {
 } from "lucide-react";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
+import { formatQuotationStatus } from "../services/quotationService";
 
 
 export const Dashboard = ({
   user,
   metrics,
-  quotations,
+  quotations = [],
   activities,
   onSelectQuotation,
   onViewAllQuotations,
 }) => {
   const activeCount = quotations.filter(
-    (q) => q.status !== "Cancelled" && q.status !== "Confirmed"
+    (q) => q.status !== "Cancelled" && q.status !== "Confirmed" && q.status !== "confirmed"
   ).length;
   const negotiationCount = quotations.filter(
-    (q) => q.status === "Under Negotiation"
+    (q) => q.status === "Under Negotiation" || q.status === "negotiating"
   ).length;
   const awaitingCount = quotations.filter(
-    (q) => q.status === "Awaiting Approval"
+    (q) => q.status === "Awaiting Approval" || q.status === "pending_approval" || q.status === "Pending Approval"
   ).length;
   const confirmedQuotationsCount = quotations.filter(
-    (q) => q.status === "Confirmed"
+    (q) => q.status === "Confirmed" || q.status === "confirmed"
   ).length;
   const confirmedTotal = (metrics?.confirmedOrders || 3) + confirmedQuotationsCount;
   const latestQuotation = quotations.find((q) => q.status !== "Cancelled") || null;
@@ -205,7 +206,7 @@ export const Dashboard = ({
                     </div>
                     <div className="text-[11px] text-slate-400">Total</div>
                   </div>
-                  <Badge variant={q.status}>{q.status}</Badge>
+                  <Badge variant={q.status}>{formatQuotationStatus(q.status)}</Badge>
                   <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition hidden sm:block" />
                 </div>
               </div>
