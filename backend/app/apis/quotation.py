@@ -897,10 +897,10 @@ async def confirm_quotation(
     return result.scalar_one()
 
 @quotation_router.post(
-    "/{quotation_id}/claim",
+    "/{quotation_id}/self-assign",
     response_model=QuotationResponse,
 )
-async def claim_quotation(
+async def assign_quotation(
     quotation_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
